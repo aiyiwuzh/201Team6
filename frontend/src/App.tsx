@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 import { getHello, getStatus, postEcho } from './services/api'
+import ItemManager from './components/ItemManager'
 
 interface StatusResponse {
   status: string;
@@ -69,7 +70,7 @@ function App() {
 
   return (
     <div className="App">
-      <h1>React + Spring Boot</h1>
+      <h1>React + Spring Boot + Supabase</h1>
       
       <div className="card">
         <h2>Backend Status</h2>
@@ -85,38 +86,50 @@ function App() {
         <button onClick={fetchStatus}>Refresh Status</button>
       </div>
 
+      {/* Database CRUD Operations */}
       <div className="card">
-        <h2>GET Request</h2>
-        <button onClick={fetchHello} disabled={loading}>
-          {loading ? 'Loading...' : 'Say Hello'}
-        </button>
-        {helloMessage && (
-          <div className="response-box">
-            <p>{helloMessage}</p>
-          </div>
-        )}
+        <ItemManager />
       </div>
 
-      <div className="card">
-        <h2>POST Request</h2>
-        <div className="input-group">
-          <input
-            type="text"
-            value={echoInput}
-            onChange={(e) => setEchoInput(e.target.value)}
-            placeholder="Enter a message"
-            onKeyPress={(e) => e.key === 'Enter' && sendEcho()}
-          />
-          <button onClick={sendEcho} disabled={loading || !echoInput.trim()}>
-            {loading ? 'Sending...' : 'Send Echo'}
-          </button>
-        </div>
-        {echoResponse && (
-          <div className="response-box">
-            <p>{echoResponse}</p>
+      {/* Demo API Endpoints */}
+      <details className="card demo-section">
+        <summary><h2>Demo API Endpoints</h2></summary>
+        
+        <div className="demo-content">
+          <div className="demo-card">
+            <h3>GET Request</h3>
+            <button onClick={fetchHello} disabled={loading}>
+              {loading ? 'Loading...' : 'Say Hello'}
+            </button>
+            {helloMessage && (
+              <div className="response-box">
+                <p>{helloMessage}</p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          <div className="demo-card">
+            <h3>POST Request</h3>
+            <div className="input-group">
+              <input
+                type="text"
+                value={echoInput}
+                onChange={(e) => setEchoInput(e.target.value)}
+                placeholder="Enter a message"
+                onKeyPress={(e) => e.key === 'Enter' && sendEcho()}
+              />
+              <button onClick={sendEcho} disabled={loading || !echoInput.trim()}>
+                {loading ? 'Sending...' : 'Send Echo'}
+              </button>
+            </div>
+            {echoResponse && (
+              <div className="response-box">
+                <p>{echoResponse}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </details>
     </div>
   )
 }
