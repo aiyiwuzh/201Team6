@@ -12,8 +12,11 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.84.0",
     "axios": "^1.6.2",
+    "lucide-react": "^0.556.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^7.10.1",
+    "sonner": "^2.0.7"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",
