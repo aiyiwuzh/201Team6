@@ -9,10 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Switch } from './ui/switch';
 import { Checkbox } from './ui/checkbox';
 import { Camera, Save, GraduationCap } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { getProfile, updateProfile, createProfile } from '../lib/database';
+import { supabase } from '../figmalib/supabase';
+import { getProfile, updateProfile, createProfile } from '../figmalib/database';
 import { toast } from 'sonner';
-import { currentUser } from '../lib/mockData';
+import { currentUser } from '../figmalib/mockData';
 
 export function ProfilePage() {
   const [profile, setProfile] = useState(currentUser);

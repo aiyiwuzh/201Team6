@@ -5,9 +5,9 @@ import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { createProfile } from '../lib/database';
-import { toast } from 'sonner@2.0.3';
+import { supabase } from '../figmalib/supabase';
+import { createProfile } from '../figmalib/database';
+import { toast } from 'sonner';
 
 interface SignUpPageProps {
   onSignUp: () => void;

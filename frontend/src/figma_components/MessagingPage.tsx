@@ -4,9 +4,9 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ArrowLeft, Send, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase';
-import { getMessages, sendMessage, subscribeToMessages } from '../lib/database';
-import type { Message } from '../lib/supabase';
+import { supabase } from '../figmalib/supabase';
+import { getMessages, sendMessage, subscribeToMessages } from '../figmalib/database';
+import type { Message } from '../figmalib/supabase';
 
 interface MessagingPageProps {
   matchId: string | null;
