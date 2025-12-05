@@ -4,11 +4,11 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { X, Heart, MapPin, GraduationCap, Home, DollarSign, Calendar, SlidersHorizontal, BookOpen, Users, Moon, User } from 'lucide-react';
-import { UserProfile } from '../lib/mockData';
+import { UserProfile } from '../figmalib/mockData';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase';
-import { getAllProfiles, createSwipe, getUserSwipes } from '../lib/database';
+import { supabase } from '../figmalib/supabase';
+import { getAllProfiles, createSwipe, getUserSwipes } from '../figmalib/database';
 
 interface SwipingPageProps {
   isGuest?: boolean;

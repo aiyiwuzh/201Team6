@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Alert, AlertDescription } from './ui/alert';
 import { AlertCircle } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../figmalib/supabase';
 
 interface LoginPageProps {
   onLogin: () => void;

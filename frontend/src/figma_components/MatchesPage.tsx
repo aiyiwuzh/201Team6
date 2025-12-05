@@ -3,8 +3,8 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Button } from './ui/button';
 import { MessageCircle, Heart, User, Lock } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '../lib/supabase';
-import { getUserMatches } from '../lib/database';
+import { supabase } from '../figmalib/supabase';
+import { getUserMatches } from '../figmalib/database';
 
 interface MatchesPageProps {
   onStartChat: (matchId: string) => void;

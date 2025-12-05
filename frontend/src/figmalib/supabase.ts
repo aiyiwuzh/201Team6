@@ -6,3 +6,4 @@ const supabaseUrl = `https://${projectId}.supabase.co`;
 const supabaseAnonKey = publicAnonKey;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
