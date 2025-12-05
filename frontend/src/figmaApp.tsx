@@ -1,16 +1,16 @@
 import { useState, useEffect } from 'react';
-import { CoverPage } from './components/CoverPage';
-import { LoginPage } from './components/LoginPage';
-import { SignUpPage } from './components/SignUpPage';
-import { ProfilePage } from './components/ProfilePage';
-import { SwipingPage } from './components/SwipingPage';
-import { MatchesPage } from './components/MatchesPage';
-import { MessagingPage } from './components/MessagingPage';
-import { SettingsPage } from './components/SettingsPage';
+import { CoverPage } from './figma_components/CoverPage';
+import { LoginPage } from './figma_components/LoginPage';
+import { SignUpPage } from './figma_components/SignUpPage';
+import { ProfilePage } from './figma_components/ProfilePage';
+import { SwipingPage } from './figma_components/SwipingPage';
+import { MatchesPage } from './figma_components/MatchesPage';
+import { MessagingPage } from './figma_components/MessagingPage';
+import { SettingsPage } from './figma_components/SettingsPage';
 import { Home, User, Heart, MessageCircle, Settings } from 'lucide-react';
-import { Toaster } from './components/ui/sonner';
-import { supabase } from './lib/supabase';
-import { deleteAllUserData } from './lib/database';
+import { Toaster } from './figma_components/ui/sonner';
+import { supabase } from './figmalib/supabase';
+import { deleteAllUserData } from './figmalib/database';
 
 type Page = 'swiping' | 'profile' | 'matches' | 'messages' | 'settings';
 type AuthPage = 'login' | 'signup';
