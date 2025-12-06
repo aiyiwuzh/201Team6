@@ -1,14 +1,18 @@
 package com.team6.backend.service;
 
 import com.team6.backend.model.Profile;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Service for calculating compatibility scores between two profiles
  * Uses multiple data structures for sophisticated matching algorithm
+ * Now includes MULTITHREADING support for parallel calculations
  */
 @Service
 public class MatchScoreService {
@@ -84,6 +88,112 @@ public class MatchScoreService {
         
         // Cap at 100 and round
         return (int) Math.min(100, Math.round(totalScore));
+    }
+    
+    /**
+     * MULTITHREADING VERSION: Calculate match score using parallel processing
+     * Uses CompletableFuture to calculate all 5 category scores CONCURRENTLY
+     * 
+     * Demonstrates:
+     * - @Async annotation for async execution
+     * - CompletableFuture for parallel tasks
+     * - Custom thread pool (matchScoreExecutor)
+     * - Non-blocking computation
+     * 
+     * @param profile1 First profile to compare
+     * @param profile2 Second profile to compare
+     * @return CompletableFuture that will contain the final score (0-100)
+     */
+    @Async("matchScoreExecutor")
+    public CompletableFuture<Integer> calculateMatchScoreAsync(Profile profile1, Profile profile2) {
+        long startTime = System.currentTimeMillis();
+        System.out.println("[" + Thread.currentThread().getName() + "] Starting ASYNC match score calculation");
+        
+        if (profile1 == null || profile2 == null) {
+            return CompletableFuture.completedFuture(0);
+        }
+        
+        try {
+            // PARALLEL EXECUTION: Launch all 5 calculations in separate threads
+            CompletableFuture<Double> budgetFuture = CompletableFuture.supplyAsync(() -> {
+                System.out.println("[" + Thread.currentThread().getName() + "] Calculating budget score");
+                return calculateBudgetScore(profile1, profile2);
+            });
+            
+            CompletableFuture<Double> lifestyleFuture = CompletableFuture.supplyAsync(() -> {
+                System.out.println("[" + Thread.currentThread().getName() + "] Calculating lifestyle score");
+                return calculateLifestyleScore(profile1, profile2);
+            });
+            
+            CompletableFuture<Double> academicFuture = CompletableFuture.supplyAsync(() -> {
+                System.out.println("[" + Thread.currentThread().getName() + "] Calculating academic score");
+                return calculateAcademicScore(profile1, profile2);
+            });
+            
+            CompletableFuture<Double> preferencesFuture = CompletableFuture.supplyAsync(() -> {
+                System.out.println("[" + Thread.currentThread().getName() + "] Calculating preferences score");
+                return calculatePreferencesScore(profile1, profile2);
+            });
+            
+            CompletableFuture<Double> cleanlinessFuture = CompletableFuture.supplyAsync(() -> {
+                System.out.println("[" + Thread.currentThread().getName() + "] Calculating cleanliness score");
+                return calculateCleanlinessScore(profile1, profile2);
+            });
+            
+            // Wait for ALL parallel tasks to complete
+            CompletableFuture<Void> allFutures = CompletableFuture.allOf(
+                budgetFuture, lifestyleFuture, academicFuture, preferencesFuture, cleanlinessFuture
+            );
+            
+            // When all complete, combine results
+            return allFutures.thenApply(v -> {
+                try {
+                    System.out.println("[" + Thread.currentThread().getName() + "] All parallel calculations complete, combining results...");
+                    
+                    // Data Structure 2: List to store compatibility factors
+                    List<CompatibilityFactor> factors = new ArrayList<>();
+                    factors.add(new CompatibilityFactor("budget", budgetFuture.get(), CATEGORY_WEIGHTS.get("budget")));
+                    factors.add(new CompatibilityFactor("lifestyle", lifestyleFuture.get(), CATEGORY_WEIGHTS.get("lifestyle")));
+                    factors.add(new CompatibilityFactor("academic", academicFuture.get(), CATEGORY_WEIGHTS.get("academic")));
+                    factors.add(new CompatibilityFactor("preferences", preferencesFuture.get(), CATEGORY_WEIGHTS.get("preferences")));
+                    factors.add(new CompatibilityFactor("cleanliness", cleanlinessFuture.get(), CATEGORY_WEIGHTS.get("cleanliness")));
+                    
+                    // Data Structure 3: PriorityQueue to rank factors
+                    PriorityQueue<CompatibilityFactor> rankedFactors = new PriorityQueue<>(
+                        (f1, f2) -> Double.compare(f2.weightedScore(), f1.weightedScore())
+                    );
+                    rankedFactors.addAll(factors);
+                    
+                    // Calculate weighted total
+                    double totalScore = 0.0;
+                    while (!rankedFactors.isEmpty()) {
+                        CompatibilityFactor factor = rankedFactors.poll();
+                        totalScore += factor.weightedScore();
+                    }
+                    
+                    // Data Structure 4: Set for shared traits
+                    Set<String> sharedTraits = analyzeSharedTraits(profile1, profile2);
+                    double sharedTraitsBonus = Math.min(10.0, sharedTraits.size() * 2.0);
+                    totalScore += sharedTraitsBonus;
+                    
+                    int finalScore = (int) Math.min(100, Math.round(totalScore));
+                    long duration = System.currentTimeMillis() - startTime;
+                    
+                    System.out.println("[" + Thread.currentThread().getName() + "] ASYNC calculation completed: " + 
+                                     finalScore + "% (took " + duration + "ms)");
+                    
+                    return finalScore;
+                    
+                } catch (InterruptedException | ExecutionException e) {
+                    System.err.println("Error in parallel score calculation: " + e.getMessage());
+                    return 50; // Return neutral score on error
+                }
+            });
+            
+        } catch (Exception e) {
+            System.err.println("Error in async match score calculation: " + e.getMessage());
+            return CompletableFuture.completedFuture(50);
+        }
     }
     
     /**

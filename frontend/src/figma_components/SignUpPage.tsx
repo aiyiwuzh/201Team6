@@ -68,11 +68,12 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
     }
 
     try {
-      // Create auth user
+      // Create auth user (with email verification disabled, user will be auto-confirmed)
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: window.location.origin,
           data: {
             first_name: firstName,
             last_name: lastName,
@@ -82,24 +83,66 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
 
       if (signUpError) throw signUpError;
 
-      if (data.user) {
-        // Create profile with simplified schema
-        // user_id is passed as first parameter, not in the data object
-        await createProfile(data.user.id, {
-          email: data.user.email || null,
-          full_name: `${firstName} ${lastName}`,
-          age: null,
-          major: '',
-          school: '',
-          year: '',
-          bio: '',
-          budget_min: null,
-          budget_max: null,
-          cleanliness_rating: 5, // Default middle value
-        });
+      console.log('=== SIGN UP DEBUG ===');
+      console.log('User created:', data.user?.id);
+      console.log('Session exists:', !!data.session);
+      console.log('User confirmed:', data.user?.confirmed_at);
+      console.log('====================');
 
-        toast.success('Account created successfully! Please check your email to verify your account.');
-        onSignUp();
+      // Check if we have BOTH user and session (session means email confirmation is disabled)
+      if (!data.session) {
+        // Email confirmation is ENABLED - user needs to verify email
+        setError('Please check your email to verify your account, then log in.');
+        toast.error('Email verification required! Check your inbox and click the verification link.');
+        return;
+      }
+
+      if (data.user && data.session) {
+        // We have a real session! User is auto-confirmed
+        console.log('✅ User has active session - email confirmation is disabled');
+        
+        console.log('📝 Creating profile for user:', data.user.id);
+        console.log('Profile data:', {
+          email: data.user.email,
+          full_name: `${firstName} ${lastName}`,
+        });
+        
+        try {
+          // Create profile with simplified schema
+          // user_id is passed as first parameter, not in the data object
+          const profileResult = await createProfile(data.user.id, {
+            email: data.user.email || null,
+            full_name: `${firstName} ${lastName}`,
+            age: null,
+            major: '',
+            school: '',
+            year: '',
+            bio: '',
+            budget_min: null,
+            budget_max: null,
+            cleanliness_rating: 5, // Default middle value
+          });
+          
+          console.log('✅ Profile created successfully!', profileResult);
+          toast.success('Account created successfully! Welcome to TopTrait!');
+          
+          // Small delay to ensure auth state is propagated
+          setTimeout(() => {
+            onSignUp();
+          }, 500);
+          
+        } catch (profileError: any) {
+          console.error('❌ Error creating profile:', profileError);
+          console.error('Error details:', profileError.message);
+          console.error('Error response:', profileError.response?.data);
+          
+          // Show error but still let them log in (profile can be created later)
+          toast.error('Account created but profile setup failed. You can complete your profile later.');
+          
+          setTimeout(() => {
+            onSignUp();
+          }, 500);
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to create account. Please try again.');

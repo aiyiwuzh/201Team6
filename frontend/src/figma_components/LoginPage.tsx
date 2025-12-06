@@ -32,8 +32,18 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
 
       if (error) throw error;
       
-      if (data.user) {
-        onLogin();
+      console.log('=== LOGIN DEBUG ===');
+      console.log('User logged in:', data.user?.id);
+      console.log('Session exists:', !!data.session);
+      console.log('==================');
+      
+      if (data.user && data.session) {
+        // Small delay to ensure auth state is propagated
+        setTimeout(() => {
+          onLogin();
+        }, 500);
+      } else if (data.user && !data.session) {
+        setError('Email not verified. Please check your inbox and click the verification link.');
       }
     } catch (err: any) {
       setError(err.message || 'Invalid email or password. Please try again.');

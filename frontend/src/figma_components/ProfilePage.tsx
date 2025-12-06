@@ -36,9 +36,18 @@ export function ProfilePage() {
     try {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       
+      console.log('=== PROFILE PAGE DEBUG ===');
+      console.log('Auth error:', authError);
+      console.log('User from getUser():', user?.id);
+      
+      // Also check session
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Session exists:', !!session);
+      console.log('========================');
+      
       if (authError || !user) {
         console.error('Auth error:', authError);
-        toast.error('You must be logged in to view your profile');
+        toast.error('You must be logged in to view your profile. Your email may not be verified yet.');
         setIsLoading(false);
         return;
       }
