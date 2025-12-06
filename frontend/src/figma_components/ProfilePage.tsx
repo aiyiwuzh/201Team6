@@ -48,7 +48,7 @@ export function ProfilePage() {
 
       const existingProfile = await getProfile(user.id);
       console.log('Loaded profile:', existingProfile);
-      
+
       if (existingProfile) {
           setProfile({
           full_name: existingProfile.full_name || '',

@@ -67,6 +67,7 @@ export async function createSwipe(swiperId: string, swipedId: string, action: 'a
       swiper_id: swiperId,
       swiped_id: swipedId,
       action,
+      is_approved: action === 'approve',
       created_at: new Date().toISOString(),
     })
     .select()
@@ -145,23 +146,32 @@ export async function createMatch(user1Id: string, user2Id: string) {
 export async function getUserMatches(userId: string) {
   const { data, error } = await supabase
     .from('matches')
-    .select(`
-      *,
-      user1:profiles!matches_user1_id_fkey(*),
-      user2:profiles!matches_user2_id_fkey(*)
-    `)
+    .select('*')
     .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
 
   if (error) throw error;
   
-  // Transform the data to include the matched user's profile
-  return (data || []).map(match => {
-    const matchedUser = match.user1_id === userId ? match.user2 : match.user1;
-    return {
-      ...match,
-      matchedUser,
-    };
-  });
+  // Manually fetch profiles for matched users
+  const matches = data || [];
+  const matchesWithProfiles = await Promise.all(
+    matches.map(async (match) => {
+      const matchedUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
+      
+      // Fetch the matched user's profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', matchedUserId)
+        .single();
+      
+      return {
+        ...match,
+        matchedUser: profile,
+      };
+    })
+  );
+  
+  return matchesWithProfiles;
 }
 
 export async function deleteMatch(matchId: string) {

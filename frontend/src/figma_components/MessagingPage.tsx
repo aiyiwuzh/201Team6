@@ -59,22 +59,29 @@ export function MessagingPage({ matchId, onBack, isGuest = false }: MessagingPag
       // Get match details
       const { data: matchData } = await supabase
         .from('matches')
-        .select(`
-          *,
-          user1:profiles!matches_user1_id_fkey(*),
-          user2:profiles!matches_user2_id_fkey(*)
-        `)
+        .select('*')
         .eq('id', matchId)
         .single();
 
       if (matchData) {
-        const matchedUser = matchData.user1_id === user.id ? matchData.user2 : matchData.user1;
-        setMatch({
-          id: matchData.id,
-          name: matchedUser.full_name,
-          age: matchedUser.age,
-          major: matchedUser.major,
-        });
+        // Determine which user is the matched user
+        const matchedUserId = matchData.user1_id === user.id ? matchData.user2_id : matchData.user1_id;
+        
+        // Fetch the matched user's profile
+        const { data: matchedUserProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', matchedUserId)
+          .single();
+
+        if (matchedUserProfile) {
+          setMatch({
+            id: matchData.id,
+            name: matchedUserProfile.full_name,
+            age: matchedUserProfile.age,
+            major: matchedUserProfile.major,
+          });
+        }
       }
 
       // Load messages

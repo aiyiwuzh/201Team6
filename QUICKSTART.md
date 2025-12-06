@@ -1,5 +1,20 @@
 # Quick Start Guide
 
+## ⚡ First Time Setup
+
+### Configure Database Connection
+Before running the backend, you need to set up your Supabase connection:
+
+1. Open `backend/src/main/resources/application.properties`
+2. Replace the placeholder values with your Supabase credentials:
+```properties
+spring.datasource.url=jdbc:postgresql://YOUR_HOST:5432/postgres
+spring.datasource.username=YOUR_USERNAME
+spring.datasource.password=YOUR_PASSWORD
+```
+
+📖 **See `SUPABASE_SETUP.md` for detailed instructions**
+
 ## 🚀 Running the Application
 
 ### Start the Backend (Terminal 1)
@@ -22,12 +37,35 @@ Once both servers are running, open http://localhost:5173 in your browser.
 
 You'll see an interactive UI with:
 - **Backend Status** - Shows real-time connection status
-- **GET Request Demo** - Click "Say Hello" to test GET endpoint
-- **POST Request Demo** - Enter text and click "Send Echo" to test POST endpoint
+- **Database CRUD Operations** - Create, read, update, and delete items from your Supabase database
+- **Demo API Endpoints** (collapsible) - Test GET and POST requests
 
 ## 📡 API Endpoints
 
-Test directly with curl:
+### Database CRUD Operations
+
+```bash
+# Create item
+curl -X POST http://localhost:8080/api/items \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Item", "description": "Item description"}'
+
+# Get all items
+curl http://localhost:8080/api/items
+
+# Get one item
+curl http://localhost:8080/api/items/1
+
+# Update item
+curl -X PUT http://localhost:8080/api/items/1 \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Updated", "description": "New description"}'
+
+# Delete item
+curl -X DELETE http://localhost:8080/api/items/1
+```
+
+### Demo Endpoints
 
 ```bash
 # GET Hello
