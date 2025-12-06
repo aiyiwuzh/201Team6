@@ -1,16 +1,16 @@
 package com.team6.backend.controller;
 
-import com.team6.backend.model.Match;
-import com.team6.backend.model.User;
+import com.team6.backend.model.Swipe;
 import com.team6.backend.service.SwipeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/swipes")
@@ -21,66 +21,75 @@ public class SwipeController {
     private SwipeService swipeService;
     
     /**
+     * Create a swipe and check for match
      * POST /api/swipes
-     * Process a swipe (right or left)
+     * Body: { "swiper_id": "uuid", "swiped_id": "uuid", "action": "approve|decline" }
+     * Returns: { "swipe": Swipe, "match": Match|null }
      */
     @PostMapping
-    public ResponseEntity<?> swipe(
-            @RequestParam Long swipedUserId,
-            @RequestParam boolean approved,
-            @RequestHeader("X-User-ID") Long swiperUserId) {
-        
+    public ResponseEntity<?> createSwipe(@RequestBody Map<String, String> body) {
         try {
-            boolean isMatch = swipeService.processSwipe(swiperUserId, swipedUserId, approved);
+            UUID swiperId = UUID.fromString(body.get("swiper_id"));
+            UUID swipedId = UUID.fromString(body.get("swiped_id"));
+            String action = body.get("action");
             
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("isMatch", isMatch);
-            response.put("message", isMatch ? "It's a match!" : "Swipe recorded");
-            
-            return ResponseEntity.ok(response);
+            Map<String, Object> result = swipeService.createSwipe(swiperId, swipedId, action);
+            return ResponseEntity.status(HttpStatus.CREATED).body(result);
             
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "error", e.getMessage()
-            ));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error creating swipe: " + e.getMessage()));
         }
     }
     
     /**
-     * GET /api/swipes/next-candidate
-     * Get next user to swipe on
+     * Get all swipes for a user
+     * GET /api/swipes/user/{userId}
      */
-    @GetMapping("/next-candidate")
-    public ResponseEntity<?> getNextCandidate(@RequestHeader("X-User-ID") Long userId) {
-        Optional<User> candidate = swipeService.getNextCandidate(userId);
-        
-        if (candidate.isPresent()) {
-            // Return candidate info (excluding sensitive data)
-            Map<String, Object> candidateInfo = new HashMap<>();
-            candidateInfo.put("id", candidate.get().getId());
-            candidateInfo.put("name", candidate.get().getName());
-            candidateInfo.put("year", candidate.get().getYear());
-            candidateInfo.put("major", candidate.get().getMajor());
-            candidateInfo.put("bio", "Looking for roommate"); // Add more fields as needed
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getUserSwipes(@PathVariable String userId) {
+        try {
+            UUID userUUID = UUID.fromString(userId);
+            List<Swipe> swipes = swipeService.getUserSwipes(userUUID);
+            return ResponseEntity.ok(swipes);
             
-            return ResponseEntity.ok(candidateInfo);
-        } else {
-            return ResponseEntity.ok(Map.of(
-                "message", "No more candidates available",
-                "isEmpty", true
-            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid user ID format"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error retrieving swipes: " + e.getMessage()));
         }
     }
     
     /**
-     * GET /api/swipes/matches
-     * Get all matches for the current user
+     * Check if a swipe exists between two users
+     * GET /api/swipes/check?swiper={uuid}&swiped={uuid}
      */
-    @GetMapping("/matches")
-    public ResponseEntity<?> getMatches(@RequestHeader("X-User-ID") Long userId) {
-        List<Match> matches = swipeService.getUserMatches(userId);
-        return ResponseEntity.ok(matches);
+    @GetMapping("/check")
+    public ResponseEntity<?> checkSwipe(
+            @RequestParam String swiper,
+            @RequestParam String swiped) {
+        try {
+            UUID swiperUUID = UUID.fromString(swiper);
+            UUID swipedUUID = UUID.fromString(swiped);
+            
+            Optional<Swipe> swipe = swipeService.getSwipe(swiperUUID, swipedUUID);
+            
+            if (swipe.isPresent()) {
+                return ResponseEntity.ok(swipe.get());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "No swipe found"));
+            }
+            
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid UUID format"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Error checking swipe: " + e.getMessage()));
+        }
     }
 }
+

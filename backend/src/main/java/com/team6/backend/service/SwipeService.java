@@ -2,128 +2,140 @@ package com.team6.backend.service;
 
 import com.team6.backend.model.Match;
 import com.team6.backend.model.Swipe;
-import com.team6.backend.model.User;
 import com.team6.backend.repository.MatchRepository;
 import com.team6.backend.repository.SwipeRepository;
-import com.team6.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 
 @Service
+@Transactional
 public class SwipeService {
     
-    private final SwipeRepository swipeRepository;
-    private final MatchRepository matchRepository;
-    private final UserRepository userRepository;
-    private final SimpMessagingTemplate messagingTemplate;
+    @Autowired
+    private SwipeRepository swipeRepository;
     
     @Autowired
-    public SwipeService(SwipeRepository swipeRepository,
-                       MatchRepository matchRepository,
-                       UserRepository userRepository,
-                       SimpMessagingTemplate messagingTemplate) {
-        this.swipeRepository = swipeRepository;
-        this.matchRepository = matchRepository;
-        this.userRepository = userRepository;
-        this.messagingTemplate = messagingTemplate;
-    	}
+    private MatchRepository matchRepository;
+    
     /**
-     * Process a swipe (right or left)
-     * Returns true if it's a match, false otherwise
+     * Create a swipe and automatically check for match
+     * Returns map with swipe data and optional match
      */
-    @Transactional
-    public boolean processSwipe(Long swiperId, Long swipedId, boolean isApproved) {
-        // 1. Check if swiping on self
+    public Map<String, Object> createSwipe(UUID swiperId, UUID swipedId, String action) {
+        // Validation
+        if (swiperId == null || swipedId == null) {
+            throw new IllegalArgumentException("Swiper ID and Swiped ID cannot be null");
+        }
+        
         if (swiperId.equals(swipedId)) {
             throw new IllegalArgumentException("Cannot swipe on yourself");
         }
         
-        // 2. Check if already swiped
-        Optional<Swipe> existingSwipe = swipeRepository.findBySwiperAndSwiped(swiperId, swipedId);
+        if (!action.equals("approve") && !action.equals("decline")) {
+            throw new IllegalArgumentException("Action must be 'approve' or 'decline'");
+        }
+        
+        // Check if swipe already exists
+        Optional<Swipe> existingSwipe = swipeRepository.findBySwiperIdAndSwipedId(swiperId, swipedId);
         if (existingSwipe.isPresent()) {
-            return false; // Already swiped, no action
+            throw new IllegalArgumentException("You have already swiped on this user");
         }
         
-        // 3. Save the swipe
-        Swipe swipe = new Swipe(swiperId, swipedId, isApproved);
-        swipeRepository.save(swipe);
+        // Create swipe
+        Swipe swipe = new Swipe();
+        swipe.setSwiperId(swiperId);
+        swipe.setSwipedId(swipedId);
+        swipe.setAction(action);
+        swipe.setIsApproved(action.equals("approve"));
+        swipe.setCreatedAt(LocalDateTime.now());
+        swipe.setTimestamp(LocalDateTime.now());
         
-        // 4. If it's a right swipe, check for mutual swipe
-        if (isApproved) {
-            Optional<Swipe> reciprocalSwipe = swipeRepository.findBySwiperAndSwiped(swipedId, swiperId);
-            if (reciprocalSwipe.isPresent() && reciprocalSwipe.get().getIsApproved()) {
-                // IT'S A MATCH!
-                createMatch(swiperId, swipedId);
-                return true;
+        Swipe savedSwipe = swipeRepository.save(swipe);
+        
+        // Check for match if this was an approval
+        Match match = null;
+        if (action.equals("approve")) {
+            match = checkForMatch(swiperId, swipedId);
+        }
+        
+        // Build response
+        Map<String, Object> response = new HashMap<>();
+        response.put("swipe", savedSwipe);
+        response.put("match", match);
+        
+        return response;
+    }
+    
+    /**
+     * Check if there's a mutual match between two users
+     * If yes, create a match record
+     */
+    private Match checkForMatch(UUID swiperId, UUID swipedId) {
+        // Check if the other user has also approved this user
+        Optional<Swipe> reverseSwipe = swipeRepository.findBySwipedIdAndSwiperIdAndAction(
+            swiperId, // Now looking for swipes where current swiper was swiped on
+            swipedId, // By the user they just swiped on
+            "approve"
+        );
+        
+        if (reverseSwipe.isPresent()) {
+            // Check if match already exists (in either direction)
+            List<Match> existingMatches = matchRepository.findByUserId(swiperId);
+            for (Match existing : existingMatches) {
+                if ((existing.getUser1Id().equals(swiperId) && existing.getUser2Id().equals(swipedId)) ||
+                    (existing.getUser1Id().equals(swipedId) && existing.getUser2Id().equals(swiperId))) {
+                    // Match already exists, return it
+                    return existing;
+                }
             }
-        }
-        
-        return false;
-    }
-    
-    /**
-     * Create a match between two users
-     */
-    private void createMatch(Long user1Id, Long user2Id) {
-        // Check if match already exists
-        if (!matchRepository.existsMatchBetween(user1Id, user2Id)) {
-            Match match = new Match(user1Id, user2Id);
-            matchRepository.save(match);
             
-            // Send WebSocket notifications to both users
-            notifyMatch(user1Id, user2Id, match.getId());
-        }
-    }
-    
-    /**
-     * Notify both users about the match via WebSocket
-     */
-    private void notifyMatch(Long user1Id, Long user2Id, Long matchId) {
-        // Create match notification object
-        Map<String, Object> matchNotification = new HashMap<>();
-        matchNotification.put("type", "NEW_MATCH");
-        matchNotification.put("matchId", matchId);
-        matchNotification.put("user1Id", user1Id);
-        matchNotification.put("user2Id", user2Id);
-        matchNotification.put("timestamp", System.currentTimeMillis());
-        
-        // Send to both users
-        messagingTemplate.convertAndSend("/topic/user/" + user1Id + "/matches", matchNotification);
-        messagingTemplate.convertAndSend("/topic/user/" + user2Id + "/matches", matchNotification);
-    }
-    
-    /**
-     * Get next candidate for swiping
-     * Implements basic algorithm: Users you haven't swiped on yet
-     */
-    public Optional<User> getNextCandidate(Long userId) {
-        // Get IDs of users already swiped on
-        List<Long> swipedUserIds = swipeRepository.findSwipedUserIdsBySwiper(userId);
-        
-        // Add self to avoid showing own profile
-        swipedUserIds.add(userId);
-        
-        // Get a user not in the swiped list
-        // TODO: Implement more sophisticated matching algorithm (Gale-Shapley)
-        List<User> potentialCandidates = userRepository.findUsersNotInList(swipedUserIds);
-        
-        if (!potentialCandidates.isEmpty()) {
-            // Simple random selection for now
-            Random random = new Random();
-            return Optional.of(potentialCandidates.get(random.nextInt(potentialCandidates.size())));
+            // Mutual approval and no existing match! Create a new match
+            return createMatch(swiperId, swipedId);
         }
         
-        return Optional.empty();
+        return null;
     }
     
     /**
-     * Get all matches for a user
+     * Create a match record between two users
      */
-    public List<Match> getUserMatches(Long userId) {
-        return matchRepository.findMatchesByUserId(userId);
+    private Match createMatch(UUID user1Id, UUID user2Id) {
+        Match match = new Match();
+        match.setUser1Id(user1Id);
+        match.setUser2Id(user2Id);
+        match.setIsActive(true);
+        match.setCreatedAt(LocalDateTime.now());
+        match.setMatchedAt(LocalDateTime.now());
+        
+        return matchRepository.save(match);
+    }
+    
+    /**
+     * Get all swipes made by a user
+     */
+    public List<Swipe> getUserSwipes(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        return swipeRepository.findBySwiperId(userId);
+    }
+    
+    /**
+     * Check if a swipe exists between two users
+     */
+    public Optional<Swipe> getSwipe(UUID swiperId, UUID swipedId) {
+        if (swiperId == null || swipedId == null) {
+            throw new IllegalArgumentException("Swiper ID and Swiped ID cannot be null");
+        }
+        return swipeRepository.findBySwiperIdAndSwipedId(swiperId, swipedId);
     }
 }
+

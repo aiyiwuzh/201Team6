@@ -14,12 +14,15 @@
     
     <groupId>com.team6</groupId>
     <artifactId>backend</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>backend</name>
-    <description>Spring Boot Backend</description>
+    <version>1.0.0</version>
+    <name>TopTrait Backend</name>
+    <description>Spring Boot backend for TopTrait roommate matching application</description>
     
     <properties>
         <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
     
     <dependencies>
@@ -42,7 +45,7 @@
             <scope>runtime</scope>
         </dependency>
         
-        <!-- Spring Boot Dev Tools -->
+        <!-- Spring Boot DevTools (optional) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-devtools</artifactId>
@@ -50,13 +53,7 @@
             <optional>true</optional>
         </dependency>
         
-        <!-- Spring Boot WebSocket -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-        
-        <!-- Spring Boot Test -->
+        <!-- Spring Boot Starter Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -73,3 +70,4 @@
         </plugins>
     </build>
 </project>
+

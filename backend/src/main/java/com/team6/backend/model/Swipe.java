@@ -1,68 +1,113 @@
 package com.team6.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
-import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "swipes", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"swiper_user_id", "swiped_user_id"}))
+@Table(name = "swipes", schema = "public")
 public class Swipe {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @Column(name = "id", columnDefinition = "uuid")
+    private UUID id;
     
-    @Column(name = "swiper_user_id")
-    private Long swiperUserId;
+    @JsonProperty("swiper_id")
+    @Column(name = "swiper_id", nullable = false, columnDefinition = "uuid")
+    private UUID swiperId;
     
-    @Column(name = "swiped_user_id")
-    private Long swipedUserId;
+    @JsonProperty("swiped_id")
+    @Column(name = "swiped_id", nullable = false, columnDefinition = "uuid")
+    private UUID swipedId;
     
-    @Column(name = "is_approved")
-    private Boolean isApproved; // true = right swipe, false = left swipe
+    @Column(name = "action", nullable = false)
+    private String action; // 'approve' or 'decline'
     
+    @JsonProperty("is_approved")
+    @Column(name = "is_approved", nullable = false)
+    private Boolean isApproved;
+    
+    @JsonProperty("created_at")
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+    
+    @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp;
     
+    // Constructors
     public Swipe() {
-        this.timestamp = LocalDateTime.now();
-    }
-    
-    public Swipe(Long swiperUserId, Long swipedUserId, Boolean isApproved) {
-        this.swiperUserId = swiperUserId;
-        this.swipedUserId = swipedUserId;
-        this.isApproved = isApproved;
+        this.createdAt = LocalDateTime.now();
         this.timestamp = LocalDateTime.now();
     }
     
     // Getters and Setters
-    // ...
-
-    // Getters & Setters
-    public Long getId() { return id; }
-    public Long getSwiperUserId() { return swiperUserId; }
-    public Long getSwipedUserId() { return swipedUserId; }
-    public Boolean getApproved() { return isApproved; }
-    public LocalDateTime getTimestamp() { return timestamp; }
-
+    public UUID getId() {
+        return id;
+    }
+    
+    public void setId(UUID id) {
+        this.id = id;
+    }
+    
+    public UUID getSwiperId() {
+        return swiperId;
+    }
+    
+    public void setSwiperId(UUID swiperId) {
+        this.swiperId = swiperId;
+    }
+    
+    public UUID getSwipedId() {
+        return swipedId;
+    }
+    
+    public void setSwipedId(UUID swipedId) {
+        this.swipedId = swipedId;
+    }
+    
+    public String getAction() {
+        return action;
+    }
+    
+    public void setAction(String action) {
+        this.action = action;
+    }
+    
     public Boolean getIsApproved() {
-		return isApproved;
-	}
-
-	public void setIsApproved(Boolean isApproved) {
-		this.isApproved = isApproved;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public void setTimestamp(LocalDateTime timestamp) {
-		this.timestamp = timestamp;
-	}
-
-	public void setSwiperUserId(Long swiperUserId) { this.swiperUserId = swiperUserId; }
-    public void setSwipedUserId(Long swipedUserId) { this.swipedUserId = swipedUserId; }
-    public void setApproved(Boolean approved) { this.isApproved = approved; }
+        return isApproved;
+    }
+    
+    public void setIsApproved(Boolean isApproved) {
+        this.isApproved = isApproved;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+    
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        timestamp = LocalDateTime.now();
+    }
+    
+    @PreUpdate
+    protected void onUpdate() {
+        timestamp = LocalDateTime.now();
+    }
 }
+

@@ -8,7 +8,7 @@ import { UserProfile } from '../figmalib/mockData';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from '../figmalib/supabase';
-import { getAllProfiles, createSwipe, getUserSwipes } from '../figmalib/database';
+import { getAllProfiles, createSwipe, getUserSwipes, getMatchScore } from '../figmalib/database';
 
 interface SwipingPageProps {
   isGuest?: boolean;
@@ -22,10 +22,44 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
   const [budgetFilter, setBudgetFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
   const [swipedProfileIds, setSwipedProfileIds] = useState<Set<string>>(new Set());
+  const [matchPercentage, setMatchPercentage] = useState<number>(50);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [profileUserIdMap, setProfileUserIdMap] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     loadProfiles();
   }, []);
+
+  // Load match percentage when current profile changes
+  useEffect(() => {
+    const loadMatchScore = async () => {
+      if (!currentUserId || profiles.length === 0) {
+        return;
+      }
+
+      const targetProfile = profiles[currentIndex];
+      if (!targetProfile) {
+        return;
+      }
+
+      try {
+        // Get the target user_id from the map
+        const targetUserId = profileUserIdMap.get(targetProfile.id);
+        
+        if (targetUserId) {
+          const score = await getMatchScore(currentUserId, targetUserId);
+          setMatchPercentage(score);
+        } else {
+          setMatchPercentage(50); // Default if not found
+        }
+      } catch (error) {
+        console.error('Error loading match score:', error);
+        setMatchPercentage(50); // Default on error
+      }
+    };
+
+    loadMatchScore();
+  }, [currentIndex, profiles, currentUserId, profileUserIdMap]);
 
   const loadProfiles = async () => {
     try {
@@ -35,6 +69,9 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
         setIsLoading(false);
         return;
       }
+
+      // Set current user ID for match calculations
+      setCurrentUserId(user.id);
 
       // Get all profiles except current user
       const allProfiles = await getAllProfiles(user.id);
@@ -47,9 +84,20 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
       // Filter out already swiped profiles
       const unseen = allProfiles.filter(p => !swipedIds.has(p.user_id));
 
+      // Create map of profile ID to user ID
+      const userIdMap = new Map<string, string>();
+      unseen.forEach(p => {
+        if (p.id) {
+          userIdMap.set(p.id, p.user_id);
+        }
+      });
+      setProfileUserIdMap(userIdMap);
+
       // Transform to UserProfile format (using simplified schema)
-      const transformedProfiles = unseen.map(p => ({
-        id: p.id,
+      const transformedProfiles = unseen
+        .filter(p => p.id) // Ensure we have a valid ID
+        .map(p => ({
+        id: p.id!,
         name: p.full_name || 'Anonymous',
         age: p.age || 20,
         major: p.major || 'Undeclared',
@@ -74,7 +122,7 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
         },
         preferences: {
           year: [],
-          housingType: 'either',
+          housingType: 'either' as 'on-campus' | 'off-campus' | 'either',
           preferredAreas: [],
           minBudget: p.budget_min || 0,
           maxBudget: p.budget_max || 10000,
@@ -355,7 +403,7 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500">Compatibility Score</p>
-                  <p className="text-[#991B1B]">85% Match</p>
+                  <p className="text-[#991B1B]">{matchPercentage}% Match</p>
                 </div>
                 <div className="text-3xl">🎯</div>
               </div>

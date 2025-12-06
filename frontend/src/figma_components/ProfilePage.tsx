@@ -55,7 +55,7 @@ export function ProfilePage() {
           age: existingProfile.age,
           major: existingProfile.major || '',
           school: existingProfile.school || '',
-          year: existingProfile.year || '',
+          year: (existingProfile.year || '') as Profile['year'],
           bio: existingProfile.bio || '',
           budget_min: existingProfile.budget_min,
           budget_max: existingProfile.budget_max,
@@ -155,7 +155,12 @@ export function ProfilePage() {
   };
 
   const updateField = <K extends keyof Profile>(field: K, value: Profile[K]) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
+    console.log(`updateField: ${String(field)} = ${value}`);
+    setProfile(prev => {
+      const updated = { ...prev, [field]: value };
+      console.log('Updated profile:', updated);
+      return updated;
+    });
   };
 
   if (isLoading) {
@@ -417,8 +422,13 @@ export function ProfilePage() {
               </div>
             </div>
             <Slider
-              value={[profile.cleanliness_rating || 5]}
-              onValueChange={(value) => updateField('cleanliness_rating', value[0])}
+              value={[Number(profile.cleanliness_rating ?? 5)]}
+              onValueChange={(value: number[]) => {
+                console.log('Slider value changed:', value);
+                const newValue = value[0];
+                console.log('Setting cleanliness to:', newValue);
+                setProfile(prev => ({ ...prev, cleanliness_rating: newValue }));
+              }}
               min={1}
               max={10}
               step={1}

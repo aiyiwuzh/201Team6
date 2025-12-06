@@ -1,79 +1,102 @@
 package com.team6.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
-@Table(name = "matches")
+@Table(name = "matches", schema = "public")
 public class Match {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue
+    @Column(name = "id", columnDefinition = "uuid")
+    private UUID id;
     
-    @Column(name = "user1_id")
-    private Long user1Id;
+    @JsonProperty("user1_id")
+    @Column(name = "user1_id", nullable = false, columnDefinition = "uuid")
+    private UUID user1Id;
     
-    @Column(name = "user2_id")
-    private Long user2Id;
+    @JsonProperty("user2_id")
+    @Column(name = "user2_id", nullable = false, columnDefinition = "uuid")
+    private UUID user2Id;
     
-    @Column(name = "matched_at")
+    @JsonProperty("is_active")
+    @Column(name = "is_active")
+    private Boolean isActive;
+    
+    @JsonProperty("created_at")
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+    
+    @JsonProperty("matched_at")
+    @Column(name = "matched_at", nullable = false)
     private LocalDateTime matchedAt;
     
-    @Column(name = "is_active")
-    private Boolean isActive = true;
-    
+    // Constructors
     public Match() {
-        this.matchedAt = LocalDateTime.now();
-    }
-    
-    public Match(Long user1Id, Long user2Id) {
-        this.user1Id = user1Id;
-        this.user2Id = user2Id;
-        this.matchedAt = LocalDateTime.now();
         this.isActive = true;
+        this.createdAt = LocalDateTime.now();
+        this.matchedAt = LocalDateTime.now();
     }
-
-	public Long getId() {
-		return id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public Long getUser1Id() {
-		return user1Id;
-	}
-
-	public void setUser1Id(Long user1Id) {
-		this.user1Id = user1Id;
-	}
-
-	public Long getUser2Id() {
-		return user2Id;
-	}
-
-	public void setUser2Id(Long user2Id) {
-		this.user2Id = user2Id;
-	}
-
-	public LocalDateTime getMatchedAt() {
-		return matchedAt;
-	}
-
-	public void setMatchedAt(LocalDateTime matchedAt) {
-		this.matchedAt = matchedAt;
-	}
-
-	public Boolean getIsActive() {
-		return isActive;
-	}
-
-	public void setIsActive(Boolean isActive) {
-		this.isActive = isActive;
-	}
     
     // Getters and Setters
-    // ...
+    public UUID getId() {
+        return id;
+    }
+    
+    public void setId(UUID id) {
+        this.id = id;
+    }
+    
+    public UUID getUser1Id() {
+        return user1Id;
+    }
+    
+    public void setUser1Id(UUID user1Id) {
+        this.user1Id = user1Id;
+    }
+    
+    public UUID getUser2Id() {
+        return user2Id;
+    }
+    
+    public void setUser2Id(UUID user2Id) {
+        this.user2Id = user2Id;
+    }
+    
+    public Boolean getIsActive() {
+        return isActive;
+    }
+    
+    public void setIsActive(Boolean isActive) {
+        this.isActive = isActive;
+    }
+    
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+    
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+    
+    public LocalDateTime getMatchedAt() {
+        return matchedAt;
+    }
+    
+    public void setMatchedAt(LocalDateTime matchedAt) {
+        this.matchedAt = matchedAt;
+    }
+    
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        matchedAt = LocalDateTime.now();
+        if (isActive == null) {
+            isActive = true;
+        }
+    }
 }
+
