@@ -1,23 +1,32 @@
 import { useState, useEffect } from 'react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Switch } from './ui/switch';
-import { Checkbox } from './ui/checkbox';
-import { Camera, Save, GraduationCap } from 'lucide-react';
+import { Save, User2, AlertCircle } from 'lucide-react';
 import { supabase } from '../figmalib/supabase';
 import { getProfile, updateProfile, createProfile } from '../figmalib/database';
 import { toast } from 'sonner';
-import { currentUser } from '../figmalib/mockData';
+import { Profile } from '../types/profile';
 
 export function ProfilePage() {
-  const [profile, setProfile] = useState(currentUser);
-  const [isSaving, setIsSaving] = useState(false);
+  const [profile, setProfile] = useState<Partial<Profile>>({
+    full_name: '',
+    age: null,
+    major: '',
+    school: '',
+    year: '',
+    bio: '',
+    budget_min: null,
+    budget_max: null,
+    cleanliness_rating: 5,
+  });
+  
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -25,40 +34,40 @@ export function ProfilePage() {
 
   const loadProfile = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
       
-      if (user) {
-        const userProfile = await getProfile(user.id);
-        
-        if (userProfile) {
-          // Map Supabase profile to component state
-          setProfile({
-            id: userProfile.id,
-            name: userProfile.full_name,
-            age: userProfile.age,
-            major: userProfile.major,
-            school: userProfile.school,
-            year: userProfile.year as any,
-            bio: userProfile.bio,
-            photos: userProfile.avatar_url ? [userProfile.avatar_url] : [],
-            housingType: 'off-campus',
-            preferences: {
-              preferredAreas: userProfile.usc_area ? [userProfile.usc_area] : [],
-              year: [],
-              greekLife: userProfile.greek_life === 'yes',
-              studyHabits: userProfile.study_habits,
-              guestFrequency: userProfile.guest_frequency,
-              sleepSchedule: userProfile.sleep_schedule,
-              cleanliness: userProfile.cleanliness,
-              noiseLevel: userProfile.noise_level,
-            },
-            interests: userProfile.interests || [],
-            topTraits: userProfile.top_traits || [],
-          });
-        }
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        toast.error('You must be logged in to view your profile');
+        setIsLoading(false);
+        return;
       }
-    } catch (error) {
+
+      console.log('Loading profile for user:', user.id);
+      setUserId(user.id);
+
+      const existingProfile = await getProfile(user.id);
+      console.log('Loaded profile:', existingProfile);
+      
+      if (existingProfile) {
+          setProfile({
+          full_name: existingProfile.full_name || '',
+          age: existingProfile.age,
+          major: existingProfile.major || '',
+          school: existingProfile.school || '',
+          year: existingProfile.year || '',
+          bio: existingProfile.bio || '',
+          budget_min: existingProfile.budget_min,
+          budget_max: existingProfile.budget_max,
+          cleanliness_rating: existingProfile.cleanliness_rating || 5,
+        });
+      } else {
+        console.log('No existing profile found - will create on save');
+        // Keep default empty state for new profile
+      }
+    } catch (error: any) {
       console.error('Error loading profile:', error);
+      console.error('Error details:', error.message);
       toast.error('Failed to load profile');
     } finally {
       setIsLoading(false);
@@ -66,64 +75,103 @@ export function ProfilePage() {
   };
 
   const handleSave = async () => {
+    // Validation
+    if (profile.budget_min && profile.budget_max && profile.budget_max < profile.budget_min) {
+      toast.error('Maximum budget must be greater than or equal to minimum budget');
+      return;
+    }
+
+    if (profile.cleanliness_rating && (profile.cleanliness_rating < 1 || profile.cleanliness_rating > 10)) {
+      toast.error('Cleanliness rating must be between 1 and 10');
+      return;
+    }
+
     setIsSaving(true);
     
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error('Auth error:', authError);
+        toast.error('Authentication error. Please log in again.');
+        return;
+      }
       
       if (!user) {
         toast.error('You must be logged in to save your profile');
         return;
       }
 
-      const profileData = {
-        username: user.email?.split('@')[0] || '',
-        full_name: profile.name,
+      console.log('Saving profile for user:', user.id);
+
+      // Don't include user_id or email in updates - they're set on create only
+      const profileData: any = {
+        full_name: profile.full_name || '',
         age: profile.age,
-        major: profile.major,
-        school: profile.school,
-        year: profile.year,
-        bio: profile.bio,
-        avatar_url: profile.photos[0],
-        greek_life: profile.preferences.greekLife ? 'yes' : 'no',
-        study_habits: profile.preferences.studyHabits || '',
-        usc_area: profile.preferences.preferredAreas[0] || '',
-        guest_frequency: profile.preferences.guestFrequency || '',
-        sleep_schedule: profile.preferences.sleepSchedule || '',
-        cleanliness: profile.preferences.cleanliness || '',
-        noise_level: profile.preferences.noiseLevel || '',
-        interests: profile.interests,
-        top_traits: profile.topTraits,
+        major: profile.major || '',
+        school: profile.school || '',
+        year: profile.year || '',
+        bio: profile.bio || '',
+        budget_min: profile.budget_min,
+        budget_max: profile.budget_max,
+        cleanliness_rating: profile.cleanliness_rating,
       };
 
-      const existingProfile = await getProfile(user.id);
-      
-      if (existingProfile) {
-        await updateProfile(user.id, profileData);
-      } else {
-        await createProfile(user.id, profileData);
+      console.log('Profile data to save:', profileData);
+
+      // Try to get existing profile
+      let existingProfile = null;
+      try {
+        existingProfile = await getProfile(user.id);
+        console.log('Existing profile:', existingProfile);
+      } catch (error: any) {
+        console.log('No existing profile found (will create new):', error.message);
       }
       
-      toast.success('Profile saved successfully!');
-    } catch (error) {
+      if (existingProfile && existingProfile.id) {
+        console.log('Updating existing profile...');
+        // Don't update email on existing profiles to avoid conflicts
+        const result = await updateProfile(user.id, profileData);
+        console.log('Update result:', result);
+        toast.success('Profile updated successfully!');
+      } else {
+        console.log('Creating new profile...');
+        // Include email only on creation
+        const createData = {
+          ...profileData,
+          email: user.email || null,
+        };
+        const result = await createProfile(user.id, createData);
+        console.log('Create result:', result);
+        toast.success('Profile created successfully!');
+      }
+    } catch (error: any) {
       console.error('Error saving profile:', error);
-      toast.error('Failed to save profile');
+      console.error('Error details:', error.message, error.details, error.hint);
+      toast.error(`Failed to save profile: ${error.message || 'Please try again.'}`);
     } finally {
       setIsSaving(false);
     }
   };
 
+  const updateField = <K extends keyof Profile>(field: K, value: Profile[K]) => {
+    setProfile(prev => ({ ...prev, [field]: value }));
+  };
+
   if (isLoading) {
     return (
-      <div className="max-w-4xl mx-auto pb-20 md:pb-0">
-        <div className="bg-[#141414] rounded-lg border border-white/10 p-6 md:p-8">
-          <div className="text-center text-gray-400">Loading profile...</div>
+      <div className="max-w-4xl mx-auto pb-20 md:pb-0 px-4">
+        <div className="bg-[#141414] rounded-xl border border-white/10 p-8 shadow-2xl">
+          <div className="flex flex-col items-center justify-center gap-4 py-12">
+            <div className="w-12 h-12 border-4 border-[#991B1B] border-t-transparent rounded-full animate-spin"></div>
+            <div className="text-gray-400 text-lg">Loading profile...</div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const uscSchools = [
+  const USC_SCHOOLS = [
     'Dornsife College of Letters, Arts and Sciences',
     'Marshall School of Business',
     'Viterbi School of Engineering',
@@ -141,487 +189,255 @@ export function ProfilePage() {
     'Alfred E. Mann School of Pharmacy',
   ];
 
-  const uscAreas = [
-    'University Park',
-    'Exposition Park',
-    'Adams-Normandie',
-    'West Adams',
-    'Jefferson Park',
-    'Vermont Square',
-  ];
-
-  const togglePreferredArea = (area: string) => {
-    const current = profile.preferences.preferredAreas;
-    const updated = current.includes(area)
-      ? current.filter(a => a !== area)
-      : [...current, area];
-    setProfile({ ...profile, preferences: { ...profile.preferences, preferredAreas: updated } });
-  };
-
-  const togglePreferredYear = (year: string) => {
-    const current = profile.preferences.year;
-    const updated = current.includes(year)
-      ? current.filter(y => y !== year)
-      : [...current, year];
-    setProfile({ ...profile, preferences: { ...profile.preferences, year: updated } });
-  };
-
   return (
-    <div className="max-w-4xl mx-auto pb-20 md:pb-0">
-      <div className="bg-[#141414] rounded-lg border border-white/10 p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <GraduationCap className="text-[#991B1B]" size={28} />
-            <h2 className="text-white">Your USC Profile</h2>
+    <div className="max-w-4xl mx-auto pb-20 md:pb-0 px-4">
+      <div className="bg-gradient-to-br from-[#141414] to-[#0a0a0a] rounded-xl border border-white/10 p-6 md:p-8 shadow-2xl">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-gradient-to-br from-[#991B1B] to-[#7d1616] rounded-xl shadow-lg shadow-[#991B1B]/20">
+              <User2 className="text-white" size={24} />
+            </div>
+            <div>
+              <h2 className="text-white text-2xl font-bold">Your Profile</h2>
+              <p className="text-gray-400 text-sm mt-0.5">Manage your roommate profile information</p>
+            </div>
           </div>
-          <Button onClick={handleSave} disabled={isSaving} className="bg-[#991B1B] hover:bg-[#7d1616]">
+          <Button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className="bg-gradient-to-r from-[#991B1B] to-[#7d1616] hover:from-[#7d1616] hover:to-[#991B1B] text-white shadow-lg shadow-[#991B1B]/30 transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 w-full sm:w-auto"
+          >
             <Save size={16} className="mr-2" />
             {isSaving ? 'Saving...' : 'Save Profile'}
           </Button>
         </div>
 
-        {/* Photo Upload */}
-        <div className="mb-8">
-          <Label className="text-gray-400">Profile Photos</Label>
-          <div className="grid grid-cols-3 gap-4 mt-3">
-            {[0, 1, 2].map((index) => (
-              <div key={index} className="relative aspect-square bg-[#1a1a1a] rounded-lg overflow-hidden border-2 border-dashed border-white/20 hover:border-[#991B1B]/50 transition-colors cursor-pointer group">
-                {profile.photos[index] ? (
-                  <ImageWithFallback
-                    src={profile.photos[index]}
-                    alt={`Profile photo ${index + 1}`}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <Camera className="mx-auto text-gray-600 group-hover:text-[#991B1B] transition-colors" size={32} />
-                      <p className="text-gray-600 mt-2">Add Photo</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
+        {/* Basic Information Section */}
+        <div className="space-y-6 mb-8 bg-white/[0.02] p-6 rounded-xl border border-white/5">
+          <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+            <div className="w-1.5 h-6 bg-gradient-to-b from-[#991B1B] to-[#7d1616] rounded-full shadow-lg shadow-[#991B1B]/50"></div>
+            <h3 className="text-white font-semibold text-lg">Basic Information</h3>
           </div>
-        </div>
-
-        {/* Basic Information */}
-        <div className="space-y-6 mb-8">
-          <h3 className="text-white flex items-center gap-2">
-            <span className="text-[#991B1B]">•</span> Basic Information
-          </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <Label htmlFor="name" className="text-gray-400">Name</Label>
+            <div className="md:col-span-2">
+              <Label htmlFor="full_name" className="text-gray-300 mb-2 block font-medium">
+                Full Name <span className="text-[#991B1B]">*</span>
+              </Label>
               <Input
-                id="name"
-                value={profile.name}
-                onChange={(e) => setProfile({ ...profile, name: e.target.value })}
-                placeholder="Your name"
-                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-600"
+                id="full_name"
+                value={profile.full_name || ''}
+                onChange={(e) => updateField('full_name', e.target.value)}
+                placeholder="Enter your full name"
+                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200"
               />
             </div>
 
             <div>
-              <Label htmlFor="age" className="text-gray-400">Age</Label>
+              <Label htmlFor="age" className="text-gray-300 mb-2 block font-medium">
+                Age
+              </Label>
               <Input
                 id="age"
                 type="number"
-                value={profile.age}
-                onChange={(e) => setProfile({ ...profile, age: parseInt(e.target.value) })}
-                placeholder="Your age"
-                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-600"
+                min="17"
+                max="100"
+                value={profile.age || ''}
+                onChange={(e) => updateField('age', e.target.value ? parseInt(e.target.value) : null)}
+                placeholder="Enter your age"
+                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200"
               />
             </div>
 
             <div>
-              <Label htmlFor="year" className="text-gray-400">Year</Label>
+              <Label htmlFor="year" className="text-gray-300 mb-2 block font-medium">
+                Academic Year
+              </Label>
               <Select
-                value={profile.year}
-                onValueChange={(value: 'freshman' | 'sophomore' | 'junior' | 'senior' | 'graduate') => 
-                  setProfile({ ...profile, year: value })
-                }
+                value={profile.year || ''}
+                onValueChange={(value) => updateField('year', value as Profile['year'])}
               >
-                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                  <SelectValue />
+                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200">
+                  <SelectValue placeholder="Select year" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1a1a1a] border-white/10">
-                  <SelectItem value="freshman">Freshman</SelectItem>
-                  <SelectItem value="sophomore">Sophomore</SelectItem>
-                  <SelectItem value="junior">Junior</SelectItem>
-                  <SelectItem value="senior">Senior</SelectItem>
-                  <SelectItem value="graduate">Graduate Student</SelectItem>
+                <SelectContent className="bg-[#1a1a1a] border-white/10 shadow-xl">
+                  <SelectItem value="freshman" className="text-white hover:bg-[#991B1B]/20 focus:bg-[#991B1B]/20">Freshman</SelectItem>
+                  <SelectItem value="sophomore" className="text-white hover:bg-[#991B1B]/20 focus:bg-[#991B1B]/20">Sophomore</SelectItem>
+                  <SelectItem value="junior" className="text-white hover:bg-[#991B1B]/20 focus:bg-[#991B1B]/20">Junior</SelectItem>
+                  <SelectItem value="senior" className="text-white hover:bg-[#991B1B]/20 focus:bg-[#991B1B]/20">Senior</SelectItem>
+                  <SelectItem value="graduate" className="text-white hover:bg-[#991B1B]/20 focus:bg-[#991B1B]/20">Graduate Student</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
-            <div>
-              <Label htmlFor="major" className="text-gray-400">Major</Label>
-              <Input
-                id="major"
-                value={profile.major}
-                onChange={(e) => setProfile({ ...profile, major: e.target.value })}
-                placeholder="e.g., Computer Science"
-                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-600"
-              />
+          </div>
             </div>
 
-            <div className="md:col-span-2">
-              <Label htmlFor="school" className="text-gray-400">USC School</Label>
+        {/* Academic Information Section */}
+        <div className="space-y-6 mb-8 bg-white/[0.02] p-6 rounded-xl border border-white/5">
+          <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+            <div className="w-1.5 h-6 bg-gradient-to-b from-[#991B1B] to-[#7d1616] rounded-full shadow-lg shadow-[#991B1B]/50"></div>
+            <h3 className="text-white font-semibold text-lg">Academic Information</h3>
+            </div>
+
+          <div className="grid grid-cols-1 gap-6">
+            <div>
+              <Label htmlFor="school" className="text-gray-300 mb-2 block font-medium">
+                USC School
+              </Label>
               <Select
-                value={profile.school}
-                onValueChange={(value) => setProfile({ ...profile, school: value })}
+                value={profile.school || ''}
+                onValueChange={(value) => updateField('school', value)}
               >
-                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                  <SelectValue />
+                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200">
+                  <SelectValue placeholder="Select your school" />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1a1a1a] border-white/10">
-                  {uscSchools.map(school => (
-                    <SelectItem key={school} value={school}>{school}</SelectItem>
+                <SelectContent className="bg-[#1a1a1a] border-white/10 max-h-[300px] shadow-xl">
+                  {USC_SCHOOLS.map(school => (
+                    <SelectItem 
+                      key={school} 
+                      value={school}
+                      className="text-white hover:bg-[#991B1B]/20 focus:bg-[#991B1B]/20"
+                    >
+                      {school}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="housingType" className="text-gray-400">Housing Preference</Label>
-              <Select
-                value={profile.housingType}
-                onValueChange={(value: 'on-campus' | 'off-campus') => 
-                  setProfile({ ...profile, housingType: value })
-                }
-              >
-                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1a1a1a] border-white/10">
-                  <SelectItem value="on-campus">On-Campus</SelectItem>
-                  <SelectItem value="off-campus">Off-Campus</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="location" className="text-gray-400">Preferred Area</Label>
+              <Label htmlFor="major" className="text-gray-300 mb-2 block font-medium">
+                Major
+              </Label>
               <Input
-                id="location"
-                value={profile.location}
-                onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                placeholder="e.g., University Park"
-                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-600"
+                id="major"
+                value={profile.major || ''}
+                onChange={(e) => updateField('major', e.target.value)}
+                placeholder="e.g., Computer Science, Business Administration"
+                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200"
               />
             </div>
 
             <div>
-              <Label htmlFor="budget" className="text-gray-400">Monthly Budget ($)</Label>
-              <Input
-                id="budget"
-                type="number"
-                value={profile.budget}
-                onChange={(e) => setProfile({ ...profile, budget: parseInt(e.target.value) })}
-                placeholder="1200"
-                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-600"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="moveInDate" className="text-gray-400">Move-in Date</Label>
-              <Input
-                id="moveInDate"
-                type="date"
-                value={profile.moveInDate}
-                onChange={(e) => setProfile({ ...profile, moveInDate: e.target.value })}
-                className="bg-[#1a1a1a] border-white/10 text-white"
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="bio" className="text-gray-400">Bio</Label>
+              <Label htmlFor="bio" className="text-gray-300 mb-2 block font-medium">
+                Bio
+              </Label>
             <Textarea
               id="bio"
-              value={profile.bio}
-              onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
-              placeholder="Tell potential roommates about yourself... (interests, hobbies, what you're looking for in a roommate)"
+                value={profile.bio || ''}
+                onChange={(e) => updateField('bio', e.target.value)}
+                placeholder="Tell potential roommates about yourself... (interests, hobbies, what you're looking for)"
               rows={4}
-              className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-600"
-            />
+                className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 resize-none transition-all duration-200"
+              />
+              <p className="text-gray-400 text-xs mt-2 flex items-start gap-1.5">
+                <span className="text-[#991B1B] mt-0.5">💡</span>
+                <span>Share what makes you unique and what you're looking for in a roommate</span>
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Lifestyle Traits */}
-        <div className="space-y-6 mb-8">
-          <h3 className="text-white flex items-center gap-2">
-            <span className="text-[#D97706]">•</span> Lifestyle & Habits
-          </h3>
-
-          <div>
-            <div className="flex justify-between mb-2">
-              <Label className="text-gray-400">Cleanliness Level</Label>
-              <span className="text-[#991B1B]">{profile.traits.cleanliness}/10</span>
-            </div>
-            <Slider
-              value={[profile.traits.cleanliness]}
-              onValueChange={(value) => setProfile({ ...profile, traits: { ...profile.traits, cleanliness: value[0] } })}
-              max={10}
-              step={1}
-              className="[&_[role=slider]]:bg-[#991B1B] [&_[role=slider]]:border-[#991B1B]"
-            />
-            <p className="text-gray-500 mt-1">How clean do you keep your space?</p>
-          </div>
-
-          <div>
-            <div className="flex justify-between mb-2">
-              <Label className="text-gray-400">Social Level</Label>
-              <span className="text-[#991B1B]">{profile.traits.socialness}/10</span>
-            </div>
-            <Slider
-              value={[profile.traits.socialness]}
-              onValueChange={(value) => setProfile({ ...profile, traits: { ...profile.traits, socialness: value[0] } })}
-              max={10}
-              step={1}
-              className="[&_[role=slider]]:bg-[#991B1B] [&_[role=slider]]:border-[#991B1B]"
-            />
-            <p className="text-gray-500 mt-1">How social are you at home?</p>
-          </div>
-
-          <div>
-            <Label className="text-gray-400">Study Habits</Label>
-            <Select
-              value={profile.traits.studyHabits}
-              onValueChange={(value: 'library' | 'home' | 'flexible') => 
-                setProfile({ ...profile, traits: { ...profile.traits, studyHabits: value } })
-              }
-            >
-              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1a1a] border-white/10">
-                <SelectItem value="library">Prefer Library (Leavey, Doheny)</SelectItem>
-                <SelectItem value="home">Prefer Home</SelectItem>
-                <SelectItem value="flexible">Flexible</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="text-gray-400">Sleep Schedule</Label>
-            <Select
-              value={profile.traits.sleepSchedule}
-              onValueChange={(value: 'early' | 'night' | 'flexible') => 
-                setProfile({ ...profile, traits: { ...profile.traits, sleepSchedule: value } })
-              }
-            >
-              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1a1a] border-white/10">
-                <SelectItem value="early">Early Bird (before 10pm)</SelectItem>
-                <SelectItem value="night">Night Owl (after midnight)</SelectItem>
-                <SelectItem value="flexible">Flexible</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="text-gray-400">Guest Frequency</Label>
-            <Select
-              value={profile.traits.guestFrequency}
-              onValueChange={(value: 'never' | 'sometimes' | 'often') => 
-                setProfile({ ...profile, traits: { ...profile.traits, guestFrequency: value } })
-              }
-            >
-              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1a1a] border-white/10">
-                <SelectItem value="never">Rarely/Never</SelectItem>
-                <SelectItem value="sometimes">Sometimes</SelectItem>
-                <SelectItem value="often">Often</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="text-gray-400">Drinking Habits</Label>
-            <Select
-              value={profile.traits.drinking}
-              onValueChange={(value: 'never' | 'socially' | 'regularly') => 
-                setProfile({ ...profile, traits: { ...profile.traits, drinking: value } })
-              }
-            >
-              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1a1a] border-white/10">
-                <SelectItem value="never">Never</SelectItem>
-                <SelectItem value="socially">Socially</SelectItem>
-                <SelectItem value="regularly">Regularly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-white/10 rounded-lg">
-            <div>
-              <Label className="text-gray-300">Greek Life</Label>
-              <p className="text-gray-500">Are you in a fraternity or sorority?</p>
-            </div>
-            <Switch
-              checked={profile.traits.greekLife}
-              onCheckedChange={(checked) => setProfile({ ...profile, traits: { ...profile.traits, greekLife: checked } })}
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-white/10 rounded-lg">
-            <div>
-              <Label className="text-gray-300">Smoking</Label>
-              <p className="text-gray-500">Do you smoke?</p>
-            </div>
-            <Switch
-              checked={profile.traits.smoking}
-              onCheckedChange={(checked) => setProfile({ ...profile, traits: { ...profile.traits, smoking: checked } })}
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-white/10 rounded-lg">
-            <div>
-              <Label className="text-gray-300">Pets</Label>
-              <p className="text-gray-500">Do you have pets?</p>
-            </div>
-            <Switch
-              checked={profile.traits.pets}
-              onCheckedChange={(checked) => setProfile({ ...profile, traits: { ...profile.traits, pets: checked } })}
-            />
-          </div>
-        </div>
-
-        {/* Roommate Preferences */}
-        <div className="space-y-6">
-          <h3 className="text-white flex items-center gap-2">
-            <span className="text-[#991B1B]">•</span> Roommate Preferences
-          </h3>
-
-          <div>
-            <Label className="mb-3 block text-gray-400">Preferred Year(s)</Label>
-            <div className="space-y-2">
-              {['freshman', 'sophomore', 'junior', 'senior', 'graduate'].map((year) => (
-                <div key={year} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`year-${year}`}
-                    checked={profile.preferences.year.includes(year)}
-                    onCheckedChange={() => togglePreferredYear(year)}
-                  />
-                  <label htmlFor={`year-${year}`} className="text-gray-300 capitalize cursor-pointer">
-                    {year === 'graduate' ? 'Graduate Student' : year}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-gray-400">Housing Type Preference</Label>
-            <Select
-              value={profile.preferences.housingType}
-              onValueChange={(value: 'on-campus' | 'off-campus' | 'either') => 
-                setProfile({ ...profile, preferences: { ...profile.preferences, housingType: value } })
-              }
-            >
-              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1a1a] border-white/10">
-                <SelectItem value="on-campus">On-Campus Only</SelectItem>
-                <SelectItem value="off-campus">Off-Campus Only</SelectItem>
-                <SelectItem value="either">Either is Fine</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="mb-3 block text-gray-400">Preferred Area(s) Near USC</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {uscAreas.map((area) => (
-                <div key={area} className="flex items-center space-x-2">
-                  <Checkbox
-                    id={`area-${area}`}
-                    checked={profile.preferences.preferredAreas.includes(area)}
-                    onCheckedChange={() => togglePreferredArea(area)}
-                  />
-                  <label htmlFor={`area-${area}`} className="text-gray-300 cursor-pointer">
-                    {area}
-                  </label>
-                </div>
-              ))}
-            </div>
+        {/* Housing Budget Section */}
+        <div className="space-y-6 mb-8 bg-white/[0.02] p-6 rounded-xl border border-white/5">
+          <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+            <div className="w-1.5 h-6 bg-gradient-to-b from-[#991B1B] to-[#7d1616] rounded-full shadow-lg shadow-[#991B1B]/50"></div>
+            <h3 className="text-white font-semibold text-lg">Housing Budget</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <Label className="text-gray-400">Minimum Budget ($)</Label>
+              <Label htmlFor="budget_min" className="text-gray-300 mb-2 block font-medium">
+                Minimum Budget <span className="text-gray-500 text-sm font-normal">($/month)</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <Input
+                  id="budget_min"
                 type="number"
-                value={profile.preferences.minBudget}
-                onChange={(e) => setProfile({ ...profile, preferences: { ...profile.preferences, minBudget: parseInt(e.target.value) } })}
-                className="bg-[#1a1a1a] border-white/10 text-white"
-              />
+                  min="0"
+                  value={profile.budget_min || ''}
+                  onChange={(e) => updateField('budget_min', e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="800"
+                  className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200 pl-7"
+                />
+              </div>
             </div>
 
             <div>
-              <Label className="text-gray-400">Maximum Budget ($)</Label>
+              <Label htmlFor="budget_max" className="text-gray-300 mb-2 block font-medium">
+                Maximum Budget <span className="text-gray-500 text-sm font-normal">($/month)</span>
+              </Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
               <Input
+                  id="budget_max"
                 type="number"
-                value={profile.preferences.maxBudget}
-                onChange={(e) => setProfile({ ...profile, preferences: { ...profile.preferences, maxBudget: parseInt(e.target.value) } })}
-                className="bg-[#1a1a1a] border-white/10 text-white"
-              />
+                  min="0"
+                  value={profile.budget_max || ''}
+                  onChange={(e) => updateField('budget_max', e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="1500"
+                  className="bg-[#1a1a1a] border-white/10 text-white placeholder:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200 pl-7"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-white/10 rounded-lg">
-            <div>
-              <Label className="text-gray-300">Greek Life Preference</Label>
-              <p className="text-gray-500">Prefer roommates in Greek life?</p>
+          {profile.budget_min && profile.budget_max && profile.budget_max < profile.budget_min && (
+            <div className="flex items-center gap-2 text-[#991B1B] bg-[#991B1B]/10 p-4 rounded-lg border border-[#991B1B]/30 animate-pulse">
+              <AlertCircle size={18} className="flex-shrink-0" />
+              <p className="text-sm font-medium">Maximum budget should be greater than or equal to minimum budget</p>
             </div>
-            <Select
-              value={profile.preferences.greekLife === null ? 'no-preference' : profile.preferences.greekLife.toString()}
-              onValueChange={(value) => {
-                const greekLifePref = value === 'no-preference' ? null : value === 'true';
-                setProfile({ ...profile, preferences: { ...profile.preferences, greekLife: greekLifePref } });
-              }}
-            >
-              <SelectTrigger className="w-40 bg-[#1a1a1a] border-white/10 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-[#1a1a1a] border-white/10">
-                <SelectItem value="no-preference">No Preference</SelectItem>
-                <SelectItem value="true">Yes</SelectItem>
-                <SelectItem value="false">No</SelectItem>
-              </SelectContent>
-            </Select>
+          )}
+        </div>
+
+        {/* Lifestyle Section */}
+        <div className="space-y-6 bg-white/[0.02] p-6 rounded-xl border border-white/5">
+          <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+            <div className="w-1.5 h-6 bg-gradient-to-b from-[#991B1B] to-[#7d1616] rounded-full shadow-lg shadow-[#991B1B]/50"></div>
+            <h3 className="text-white font-semibold text-lg">Lifestyle</h3>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-white/10 rounded-lg">
             <div>
-              <Label className="text-gray-300">Accept Smokers</Label>
-              <p className="text-gray-500">Are you okay with roommates who smoke?</p>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <Label className="text-gray-300 block mb-1 font-medium">
+                  Cleanliness Level
+                </Label>
+                <p className="text-gray-400 text-sm">
+                  How clean do you keep your living space?
+                </p>
+              </div>
+              <div className="flex flex-col items-center bg-gradient-to-br from-[#991B1B] to-[#7d1616] rounded-xl p-4 min-w-[80px] shadow-lg shadow-[#991B1B]/30">
+                <div className="text-white font-bold text-3xl">
+                  {profile.cleanliness_rating || 5}
+                </div>
+                <div className="text-white/70 text-xs mt-1">/ 10</div>
+              </div>
             </div>
-            <Switch
-              checked={profile.preferences.smoking}
-              onCheckedChange={(checked) => setProfile({ ...profile, preferences: { ...profile.preferences, smoking: checked } })}
+            <Slider
+              value={[profile.cleanliness_rating || 5]}
+              onValueChange={(value) => updateField('cleanliness_rating', value[0])}
+              min={1}
+              max={10}
+              step={1}
+              className="py-2 [&_[role=slider]]:bg-gradient-to-br [&_[role=slider]]:from-[#991B1B] [&_[role=slider]]:to-[#7d1616] [&_[role=slider]]:border-[#991B1B] [&_[role=slider]]:shadow-lg [&_[role=slider]]:shadow-[#991B1B]/50 [&_[role=slider]]:w-5 [&_[role=slider]]:h-5 [&_[role=slider]]:transition-all [&_[role=slider]]:duration-200 hover:[&_[role=slider]]:scale-110 [&_.relative]:bg-white/10 [&_.relative]:h-2 [&_.relative]:rounded-full"
             />
+            <div className="flex justify-between text-xs text-gray-400 mt-3 px-1">
+              <div className="flex flex-col items-start">
+                <span className="font-medium">1</span>
+                <span className="text-[10px] text-gray-500">Messy</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="font-medium">5</span>
+                <span className="text-[10px] text-gray-500">Average</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="font-medium">10</span>
+                <span className="text-[10px] text-gray-500">Spotless</span>
           </div>
-
-          <div className="flex items-center justify-between p-4 bg-[#1a1a1a] border border-white/10 rounded-lg">
-            <div>
-              <Label className="text-gray-300">Accept Pets</Label>
-              <p className="text-gray-500">Are you okay with roommates who have pets?</p>
             </div>
-            <Switch
-              checked={profile.preferences.pets}
-              onCheckedChange={(checked) => setProfile({ ...profile, preferences: { ...profile.preferences, pets: checked } })}
-            />
           </div>
         </div>
       </div>

@@ -83,27 +83,19 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
       if (signUpError) throw signUpError;
 
       if (data.user) {
-        // Create username from email
-        const username = email.split('@')[0];
-
-        // Create profile
+        // Create profile with simplified schema
+        // user_id is passed as first parameter, not in the data object
         await createProfile(data.user.id, {
-          username,
+          email: data.user.email || null,
           full_name: `${firstName} ${lastName}`,
-          age: 18,
+          age: null,
           major: '',
           school: '',
           year: '',
           bio: '',
-          greek_life: '',
-          study_habits: '',
-          usc_area: '',
-          guest_frequency: '',
-          sleep_schedule: '',
-          cleanliness: '',
-          noise_level: '',
-          interests: [],
-          top_traits: [],
+          budget_min: null,
+          budget_max: null,
+          cleanliness_rating: 5, // Default middle value
         });
 
         toast.success('Account created successfully! Please check your email to verify your account.');

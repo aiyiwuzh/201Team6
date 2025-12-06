@@ -47,28 +47,28 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
       // Filter out already swiped profiles
       const unseen = allProfiles.filter(p => !swipedIds.has(p.user_id));
 
-      // Transform to UserProfile format
+      // Transform to UserProfile format (using simplified schema)
       const transformedProfiles = unseen.map(p => ({
         id: p.id,
-        name: p.full_name,
-        age: p.age,
-        major: p.major,
-        school: p.school,
-        year: p.year as any,
-        bio: p.bio,
-        photos: p.avatar_url ? [p.avatar_url] : [],
-        location: p.usc_area,
-        budget: 1200, // Default budget
+        name: p.full_name || 'Anonymous',
+        age: p.age || 20,
+        major: p.major || 'Undeclared',
+        school: p.school || '',
+        year: p.year as any || 'sophomore',
+        bio: p.bio || '',
+        photos: [], // Photos removed from schema
+        location: 'Near USC', // Default since usc_area removed
+        budget: p.budget_max || p.budget_min || 1200,
         moveInDate: new Date().toISOString().split('T')[0],
         housingType: 'off-campus' as any,
         traits: {
-          cleanliness: 5,
-          socialness: 5,
-          studyHabits: p.study_habits as any || 'flexible',
-          sleepSchedule: p.sleep_schedule as any || 'flexible',
-          guestFrequency: p.guest_frequency as any || 'sometimes',
+          cleanliness: p.cleanliness_rating || 5,
+          socialness: 5, // Default
+          studyHabits: 'flexible' as any,
+          sleepSchedule: 'flexible' as any,
+          guestFrequency: 'sometimes' as any,
           drinking: 'socially' as any,
-          greekLife: p.greek_life === 'yes',
+          greekLife: false,
           smoking: false,
           pets: false,
         },
@@ -76,8 +76,8 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
           year: [],
           housingType: 'either',
           preferredAreas: [],
-          minBudget: 0,
-          maxBudget: 10000,
+          minBudget: p.budget_min || 0,
+          maxBudget: p.budget_max || 10000,
           greekLife: null,
           smoking: false,
           pets: false,
@@ -87,8 +87,8 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
           cleanliness: '',
           noiseLevel: '',
         },
-        interests: p.interests || [],
-        topTraits: p.top_traits || [],
+        interests: [], // Removed from schema
+        topTraits: [], // Removed from schema
       }));
 
       setProfiles(transformedProfiles);

@@ -1,4 +1,5 @@
-import { supabase, Profile, Swipe, Match, Message } from './supabase';
+import { supabase } from './supabase';
+import { Profile, Message } from '../types/profile';
 
 // ========== PROFILE FUNCTIONS ==========
 
