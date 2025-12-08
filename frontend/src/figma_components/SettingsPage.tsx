@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Separator } from './ui/separator';
-import { Bell, Mail, MessageCircle, Shield, Trash2, LogOut } from 'lucide-react';
+import { Bell, Shield, Trash2, LogOut } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '../figmalib/supabase';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,17 +38,95 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
       showLocation: true,
       invisibleMode: false,
     },
-    email: 'user@example.com',
+    email: '',
     language: 'en',
   });
+  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const handleSave = () => {
-    // Simulate API call
-    toast.success('Settings saved successfully!');
+  // Fetch user email and settings on component mount
+  useEffect(() => {
+    const fetchUserAndSettings = async () => {
+      try {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          setUserId(user.id);
+          setSettings(prev => ({ ...prev, email: user.email || '' }));
+
+          // Try to fetch saved settings from database
+          const { data: savedSettings, error } = await supabase
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+          if (savedSettings && !error) {
+            setSettings({
+              notifications: {
+                newMatches: savedSettings.new_matches ?? true,
+                messages: savedSettings.messages ?? true,
+                emailDigest: savedSettings.email_digest ?? false,
+                marketingEmails: savedSettings.marketing_emails ?? false,
+              },
+              privacy: {
+                showAge: savedSettings.show_age ?? true,
+                showLocation: savedSettings.show_location ?? true,
+                invisibleMode: savedSettings.invisible_mode ?? false,
+              },
+              email: user.email || '',
+              language: savedSettings.language ?? 'en',
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user settings:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserAndSettings();
+  }, []);
+
+  const handleSave = async () => {
+    if (!userId) {
+      toast.error('User not found');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert({
+          user_id: userId,
+          new_matches: settings.notifications.newMatches,
+          messages: settings.notifications.messages,
+          email_digest: settings.notifications.emailDigest,
+          marketing_emails: settings.notifications.marketingEmails,
+          show_age: settings.privacy.showAge,
+          show_location: settings.privacy.showLocation,
+          invisible_mode: settings.privacy.invisibleMode,
+          language: settings.language,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id'
+        });
+
+      if (error) {
+        console.error('Error saving settings:', error);
+        toast.error('Failed to save settings');
+      } else {
+        toast.success('Settings saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      toast.error('Failed to save settings');
+    }
   };
 
   const handleDeleteAccount = () => {
-    // Simulate API call
     toast.success('Account deleted. Redirecting to login...');
     if (onDeleteAccount) {
       setTimeout(() => {
@@ -57,7 +136,6 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
   };
 
   const handleLogout = () => {
-    // Simulate logout
     toast.success('Logged out successfully!');
     if (onLogout) {
       setTimeout(() => {
@@ -65,6 +143,16 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
       }, 1000);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-3xl mx-auto pb-20 md:pb-0">
+        <div className="bg-[#141414] border border-white/10 rounded-lg p-6 md:p-8">
+          <p className="text-white">Loading settings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto pb-20 md:pb-0">
@@ -81,9 +169,10 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
                 id="email"
                 type="email"
                 value={settings.email}
-                onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                className="mt-1 bg-[#1a1a1a] border-white/10 text-white"
+                disabled
+                className="mt-1 bg-[#1a1a1a] border-white/10 text-white opacity-70"
               />
+              <p className="text-gray-500 text-sm mt-1">Email cannot be changed</p>
             </div>
 
             <div>
