@@ -26,7 +26,7 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
     setError(null);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -41,6 +41,7 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
       setError(err.message || 'Invalid email or password. Please try again.');
     } finally {
       setIsLoading(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -61,7 +62,7 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* === GORGEOUS ANIMATED LOGO === */}
+        {/* Animated Logo */}
         <div className="text-center mb-10">
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
@@ -81,9 +82,9 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
           <p className="text-gray-400 mt-2">Find your perfect USC roommate</p>
         </div>
 
-        {/* === LOGIN CARD === */}
+        {/* Login Card */}
         <div className="bg-[#141414] rounded-2xl border border-white/10 p-8 shadow-2xl">
-          {/* Error Alert – now actually visible */}
+          {/* Error Alert */}
           {error && (
             <Alert variant="destructive" className="mb-6 bg-red-900/60 border-red-800">
               <AlertCircle className="h-5 w-5 text-red-400" />
@@ -93,7 +94,7 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
             </Alert>
           )}
 
-          {/* Google Login */}
+          {/* Google Button */}
           <Button
             onClick={handleGoogleLogin}
             disabled={isLoading}
@@ -114,7 +115,6 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
             <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#141414] px-4 text-gray-500 text-sm">or</span>
           </div>
 
-          {/* Email/Password Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             <div>
               <Label htmlFor="email" className="text-gray-300">Email</Label>
@@ -151,7 +151,6 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
             </Button>
           </form>
 
-          {/* Guest Login */}
           <div className="mt-6">
             <Button
               onClick={onGuestLogin}
@@ -163,7 +162,6 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
             </Button>
           </div>
 
-          {/* Links */}
           <div className="mt-8 text-center space-y-3">
             <button className="text-gray-400 hover:text-white text-sm">Forgot password?</button>
             <p className="text-gray-500 text-sm">
