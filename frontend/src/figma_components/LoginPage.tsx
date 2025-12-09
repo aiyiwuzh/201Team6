@@ -72,7 +72,7 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
-            transition={{ type="spring" stiffness={260} damping={20}}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
             className="flex justify-center"
           >
             <div className="relative">
@@ -170,10 +170,10 @@ export function LoginPage({ onLogin, onGuestLogin, onSignUpClick }: LoginPagePro
           </div>
 
           <div className="mt-8 text-center space-y-3">
-            <button className="text-gray-400 hover:text-white text-sm">Forgot password?</button>
+            <button type="button" className="text-gray-400 hover:text-white text-sm">Forgot password?</button>
             <p className="text-gray-500 text-sm">
               Don't have an account?{' '}
-              <button onClick={onSignUpClick} className="text-[#991B1B] hover:text-[#b92020] font-medium">
+              <button type="button" onClick={onSignUpClick} className="text-[#991B1B] hover:text-[#b92020] font-medium">
                 Sign up
               </button>
             </p>
