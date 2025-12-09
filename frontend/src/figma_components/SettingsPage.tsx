@@ -126,14 +126,39 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
     }
   };
 
-  const handleDeleteAccount = () => {
-    toast.success('Account deleted. Redirecting to login...');
-    if (onDeleteAccount) {
-      setTimeout(() => {
-        onDeleteAccount();
-      }, 1500);
+ const handleDeleteAccount = async () => {
+  // 1. Double-confirm with user (already done via AlertDialog)
+
+  try {
+    // Optional: Ask for password re-entry for extra security
+    // You could add a small password input modal here
+
+    const { error: rpcError } = await supabase.rpc('delete_user_account');
+
+    if (rpcError) {
+      if (rpcError.code === '42501') {
+        toast.error('Permission denied. Please re-login and try again.');
+      } else {
+        toast.error('Failed to delete account: ' + rpcError.message);
+      }
+      console.error(rpcError);
+      return;
     }
-  };
+
+    // Success — user is deleted from auth + your tables
+    toast.success('Account permanently deleted.');
+    
+    setTimeout(() => {
+      // Force sign out and redirect
+      supabase.auth.signOut();
+      window.location.href = '/login'; // or use your router
+    }, 2000);
+
+  } catch (err) {
+    toast.error('Something went wrong. Please try again.');
+    console.error(err);
+  }
+};
 
   const handleLogout = () => {
     toast.success('Logged out successfully!');
