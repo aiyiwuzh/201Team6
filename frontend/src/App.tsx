@@ -162,7 +162,9 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-[#991B1B] rounded-lg" />
+              <div className="w-8 h-8 bg-[#991B1B] rounded-lg flex items-center justify-center">
+                 <Sparkles size={20} className="text-white drop-shadow-lg" />
+              </div>
               <h1 className="text-white">TopTrait</h1>
               {isGuest && (
                 <span className="ml-2 px-2 py-1 bg-[#D97706]/20 text-[#D97706] rounded text-xs border border-[#D97706]/30">
