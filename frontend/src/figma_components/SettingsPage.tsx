@@ -403,8 +403,8 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
                   </AlertDialogHeader>
                   <AlertDialogFooter>
                     <AlertDialogCancel className="bg-[#1a1a1a] border-white/10 text-white hover:bg-white/5">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteAccount} className="bg-[#991B1B] hover:bg-[#7d1616]">
-                      Delete Account
+                    <AlertDialogAction onClick={handleDeleteAccount}className="bg-[#991B1B] hover:bg-red-800">
+                    Yes, Delete My Account Forever
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
