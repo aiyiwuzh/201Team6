@@ -148,11 +148,11 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
     // Success — user is deleted from auth + your tables
     toast.success('Account permanently deleted.');
     
-    setTimeout(() => {
-      // Force sign out and redirect
-      supabase.auth.signOut();
-      window.location.href = '/login'; // or use your router
-    }, 2000);
+   await supabase.auth.signOut();
+
+    // Immediate hard redirect to login page
+    // This works 100% even if you're using client-side routing
+    window.location.href = '/login';
 
   } catch (err) {
     toast.error('Something went wrong. Please try again.');
