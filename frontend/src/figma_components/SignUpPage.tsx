@@ -4,7 +4,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
 import { Alert, AlertDescription } from './ui/alert';
-import { AlertCircle, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, CheckCircle, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { supabase } from '../figmalib/supabase';
 import { createProfile } from '../figmalib/database';
 import { toast } from 'sonner';
@@ -176,13 +177,24 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
-        {/* Logo and Header */}
-        <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-[#991B1B] rounded-lg mx-auto mb-4" />
-          <h1 className="text-white mb-2">
-            Create Your Account
-          </h1>
-          <p className="text-gray-500">Join TopTrait and find your perfect USC roommate</p>
+        {/* Animated Logo */}
+        <div className="text-center mb-10">
+          <motion.div
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="flex justify-center"
+          >
+            <div className="relative">
+              <div className="w-24 h-24 bg-[#991B1B] rounded-2xl flex items-center justify-center shadow-2xl">
+                <Sparkles size={52} className="text-white drop-shadow-lg" />
+              </div>
+              <div className="absolute inset-0 bg-[#991B1B] rounded-2xl blur-2xl opacity-70 scale-110 -z-10" />
+            </div>
+          </motion.div>
+
+          <h1 className="text-4xl font-bold text-white mt-6">TopTrait</h1>
+          <p className="text-gray-400 mt-2">Find your perfect USC roommate</p>
         </div>
 
         {/* Sign Up Card */}
