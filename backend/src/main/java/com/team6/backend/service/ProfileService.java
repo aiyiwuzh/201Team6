@@ -14,10 +14,10 @@ import java.util.UUID;
 @Service
 @Transactional
 public class ProfileService {
-    
+
     @Autowired
     private ProfileRepository profileRepository;
-    
+
     /**
      * Create a new profile
      */
@@ -25,19 +25,19 @@ public class ProfileService {
         if (profile.getUserId() == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
-        
+
         // Check if profile already exists for this user
         Optional<Profile> existing = profileRepository.findByUserId(profile.getUserId());
         if (existing.isPresent()) {
             throw new IllegalArgumentException("Profile already exists for user ID: " + profile.getUserId());
         }
-        
+
         profile.setCreatedAt(LocalDateTime.now());
         profile.setUpdatedAt(LocalDateTime.now());
-        
+
         return profileRepository.save(profile);
     }
-    
+
     /**
      * Get profile by user ID
      */
@@ -47,7 +47,7 @@ public class ProfileService {
         }
         return profileRepository.findByUserId(userId);
     }
-    
+
     /**
      * Update an existing profile
      */
@@ -55,11 +55,11 @@ public class ProfileService {
         if (userId == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
-        
+
         Profile existingProfile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Profile not found for user ID: " + userId));
-        
-        // Update fields - only update if provided
+
+        // -------------- BASIC INFO --------------
         if (profileData.getEmail() != null) {
             existingProfile.setEmail(profileData.getEmail());
         }
@@ -81,18 +81,38 @@ public class ProfileService {
         if (profileData.getBio() != null) {
             existingProfile.setBio(profileData.getBio());
         }
-        
-        // Budget and cleanliness fields - always update (allow explicit null to clear)
-        // Only update if present in request (frontend sends these fields)
+
+        // -------------- HOUSING --------------
+        // Update regardless of null (frontend sends explicit values)
         existingProfile.setBudgetMin(profileData.getBudgetMin());
         existingProfile.setBudgetMax(profileData.getBudgetMax());
+
+        // -------------- CLEANLINESS --------------
         existingProfile.setCleanlinessRating(profileData.getCleanlinessRating());
-        
+
+        // -------------- NEW LIFESTYLE FIELDS --------------
+        if (profileData.getSocialLevel() != null) {
+            existingProfile.setSocialLevel(profileData.getSocialLevel());
+        }
+        if (profileData.getStudyHabits() != null) {
+            existingProfile.setStudyHabits(profileData.getStudyHabits());
+        }
+        if (profileData.getSleepSchedule() != null) {
+            existingProfile.setSleepSchedule(profileData.getSleepSchedule());
+        }
+        if (profileData.getGuests() != null) {
+            existingProfile.setGuests(profileData.getGuests());
+        }
+        if (profileData.getDrinking() != null) {
+            existingProfile.setDrinking(profileData.getDrinking());
+        }
+
+        // Timestamp update
         existingProfile.setUpdatedAt(LocalDateTime.now());
-        
+
         return profileRepository.save(existingProfile);
     }
-    
+
     /**
      * Get all profiles, optionally excluding a specific user
      */
@@ -102,7 +122,7 @@ public class ProfileService {
         }
         return profileRepository.findAll();
     }
-    
+
     /**
      * Delete profile by user ID
      */
@@ -112,4 +132,3 @@ public class ProfileService {
         profileRepository.delete(profile);
     }
 }
-
