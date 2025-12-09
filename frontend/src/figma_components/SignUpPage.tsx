@@ -187,13 +187,14 @@ export function SignUpPage({ onSignUp, onBackToLogin }: SignUpPageProps) {
 
         {/* Sign Up Card */}
         <div className="bg-[#141414] rounded-lg border border-white/10 p-8">
-          {/* Error Alert */}
-          {error && (
-            <Alert variant="destructive" className="mb-6 bg-[#991B1B]/10 border-[#991B1B]/30">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+        {error && (
+  <Alert className="mb-6 bg-red-900/50 border-red-700 text-white backdrop-blur-sm">
+    <AlertCircle className="h-5 w-5 text-red-400" />
+    <AlertDescription className="text-red-200 font-medium text-base">
+      {error}
+    </AlertDescription>
+  </Alert>
+)}
 
           {/* Google Sign Up */}
           <Button
