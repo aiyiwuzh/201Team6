@@ -60,4 +60,3 @@ export interface Message {
   created_at: string;
   timestamp: string;
 }
-

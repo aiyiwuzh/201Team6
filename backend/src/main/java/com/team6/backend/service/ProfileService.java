@@ -82,6 +82,11 @@ public class ProfileService {
             existingProfile.setBio(profileData.getBio());
         }
 
+        // Persist photo URL if provided (was missing before)
+        if (profileData.getPhotoUrl() != null) {
+            existingProfile.setPhotoUrl(profileData.getPhotoUrl());
+        }
+
         // -------------- HOUSING --------------
         // Update regardless of null (frontend sends explicit values)
         existingProfile.setBudgetMin(profileData.getBudgetMin());

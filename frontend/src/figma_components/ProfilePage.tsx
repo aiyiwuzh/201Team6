@@ -26,7 +26,7 @@ export function ProfilePage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [_userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -124,6 +124,7 @@ export function ProfilePage() {
         budget_min: profile.budget_min,
         budget_max: profile.budget_max,
         cleanliness_rating: profile.cleanliness_rating,
+        photo_url: profile.photo_url || null,
       };
 
       console.log('Profile data to save:', profileData);
@@ -236,9 +237,9 @@ export function ProfilePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <Label htmlFor="full_name" className="text-gray-300 mb-2 block font-medium">
-                Full Name <span className="text-[#991B1B]">*</span>
-              </Label>
+			<Label htmlFor="full_name" className="text-gray-300 mb-2 block font-medium">
+				Full Name <span className="text-[#991B1B]">*</span>
+			</Label>
               <Input
                 id="full_name"
                 value={profile.full_name || ''}
