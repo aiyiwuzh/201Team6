@@ -217,14 +217,8 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
           <Heart className="mx-auto text-[#991B1B] mb-4" size={64} />
           <h2 className="text-white mb-2">No More Profiles</h2>
           <p className="text-gray-400">
-            Check back later for more Trojans looking for roommates, or adjust your filters.
+            Check back later for more Trojans looking for roommates.
           </p>
-          <Button 
-            onClick={() => setCurrentIndex(0)} 
-            className="mt-6 bg-[#991B1B] hover:bg-[#7d1616]"
-          >
-            Start Over
-          </Button>
         </div>
       </div>
     );
