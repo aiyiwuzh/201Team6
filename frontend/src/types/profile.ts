@@ -16,6 +16,12 @@ export interface Profile {
   budget_min: number | null;
   budget_max: number | null;
   cleanliness_rating: number | null; // 1-10 scale
+  // NEW lifestyle fields
+  social_level: number | null; // 1-10 scale
+  study_habits: 'light' | 'balanced' | 'intense' | '' | null;
+  sleep_schedule: 'early' | 'late' | 'balanced' | '' | null;
+  guests: 'never' | 'rarely' | 'sometimes' | 'often' | '' | null;
+  drinking: 'no' | 'yes' | '' | null;
   created_at: string;
   updated_at: string;
 }

@@ -1,15 +1,16 @@
 package com.team6.backend.service;
 
-import com.team6.backend.model.Profile;
-import com.team6.backend.repository.ProfileRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.team6.backend.model.Profile;
+import com.team6.backend.repository.ProfileRepository;
 
 @Service
 @Transactional
@@ -55,14 +56,18 @@ public class ProfileService {
         if (userId == null) {
             throw new IllegalArgumentException("User ID cannot be null");
         }
+        if (profileData == null) {
+            throw new IllegalArgumentException("Profile data cannot be null");
+        }
 
         Profile existingProfile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Profile not found for user ID: " + userId));
 
         // -------------- BASIC INFO --------------
-        if (profileData.getEmail() != null) {
-            existingProfile.setEmail(profileData.getEmail());
-        }
+        // Do NOT update email on existing profiles (frontend only sets email on creation)
+        // if (profileData.getEmail() != null) {
+        //     existingProfile.setEmail(profileData.getEmail());
+        // }
         if (profileData.getFullName() != null) {
             existingProfile.setFullName(profileData.getFullName());
         }
@@ -82,15 +87,26 @@ public class ProfileService {
             existingProfile.setBio(profileData.getBio());
         }
 
-        // -------------- HOUSING --------------
-        // Update regardless of null (frontend sends explicit values)
+        // -------------- HOUSING (validate and set) --------------
+        validateBudget(
+                profileData.getBudgetMin() != null ? profileData.getBudgetMin().doubleValue() : null,
+                profileData.getBudgetMax() != null ? profileData.getBudgetMax().doubleValue() : null
+        );
         existingProfile.setBudgetMin(profileData.getBudgetMin());
         existingProfile.setBudgetMax(profileData.getBudgetMax());
 
-        // -------------- CLEANLINESS --------------
+        // -------------- LIFESTYLE (validate and set) --------------
+        validateLifestyle(
+                profileData.getCleanlinessRating(),
+                profileData.getSocialLevel(),
+                profileData.getStudyHabits(),
+                profileData.getSleepSchedule(),
+                profileData.getGuests(),
+                profileData.getDrinking()
+        );
+
         existingProfile.setCleanlinessRating(profileData.getCleanlinessRating());
 
-        // -------------- NEW LIFESTYLE FIELDS --------------
         if (profileData.getSocialLevel() != null) {
             existingProfile.setSocialLevel(profileData.getSocialLevel());
         }
@@ -127,8 +143,56 @@ public class ProfileService {
      * Delete profile by user ID
      */
     public void deleteProfile(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
         Profile profile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Profile not found for user ID: " + userId));
         profileRepository.delete(profile);
+    }
+
+    // -------------- VALIDATION HELPERS --------------
+    private void validateBudget(Double min, Double max) {
+        if (min != null && min < 0) {
+            throw new IllegalArgumentException("Minimum budget cannot be negative");
+        }
+        if (max != null && max < 0) {
+            throw new IllegalArgumentException("Maximum budget cannot be negative");
+        }
+        if (min != null && max != null && max < min) {
+            throw new IllegalArgumentException("Maximum budget must be greater than or equal to minimum budget");
+        }
+    }
+
+    private void validateLifestyle(Integer cleanliness, Integer socialLevel, String studyHabits,
+                                   String sleepSchedule, String guests, String drinking) {
+
+        if (cleanliness != null && (cleanliness < 1 || cleanliness > 10)) {
+            throw new IllegalArgumentException("Cleanliness rating must be between 1 and 10");
+        }
+        if (socialLevel != null && (socialLevel < 1 || socialLevel > 10)) {
+            throw new IllegalArgumentException("Social level must be between 1 and 10");
+        }
+
+        // Allowed values must mirror frontend dropdowns
+        if (studyHabits != null && !isOneOf(studyHabits, "light", "balanced", "intense")) {
+            throw new IllegalArgumentException("Invalid study habits value");
+        }
+        if (sleepSchedule != null && !isOneOf(sleepSchedule, "early", "late", "balanced")) {
+            throw new IllegalArgumentException("Invalid sleep schedule value");
+        }
+        if (guests != null && !isOneOf(guests, "never", "rarely", "sometimes", "often")) {
+            throw new IllegalArgumentException("Invalid guests value");
+        }
+        if (drinking != null && !isOneOf(drinking, "no", "yes")) {
+            throw new IllegalArgumentException("Invalid drinking value");
+        }
+    }
+
+    private boolean isOneOf(String value, String... allowed) {
+        for (String a : allowed) {
+            if (a.equalsIgnoreCase(value)) return true;
+        }
+        return false;
     }
 }
