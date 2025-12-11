@@ -8,7 +8,7 @@ import { UserProfile } from '../figmalib/mockData';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { supabase } from '../figmalib/supabase';
-import { getAllProfiles, createSwipe, getUserSwipes, getMatchScore } from '../figmalib/database';
+import { getAllProfiles, createSwipe, getUserSwipes, getMatchScore, getMatchScoreBreakdown } from '../figmalib/database';
 
 interface SwipingPageProps {
   isGuest?: boolean;
@@ -136,17 +136,83 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
           noiseLevel: '',
         },
         interests: [], // Removed from schema
-        topTraits: [], // Removed from schema
+        topTraits: [], // legacy field
+        topMatchedTraits: [], // will be populated by fetching breakdowns
       }));
 
       setProfiles(transformedProfiles);
-    } catch (error) {
-      console.error('Error loading profiles:', error);
-      toast.error('Failed to load profiles');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+
+      // Fetch top-3 matched traits for each unseen profile using backend breakdown
+      // We use the current supabase user id (from `user`) directly to avoid relying on state update timing.
+      if (user && transformedProfiles.length > 0) {
+        (async () => {
+          try {
+            const updated = await Promise.all(
+              transformedProfiles.map(async (prof) => {
+                const targetUserId = userIdMap.get(prof.id);
+                if (!targetUserId) return prof;
+
+                try {
+                  const breakdown = await getMatchScoreBreakdown(user.id, targetUserId);
+
+                  // Human-friendly mapping for shared trait keys
+                  const sharedTraitMap: { [k: string]: string } = {
+                    same_major: 'Same Major',
+                    same_school: 'Same School',
+                    same_year: 'Same Year',
+                    similar_cleanliness: 'Similar Cleanliness',
+                    budget_overlap: 'Budget Overlap',
+                  };
+
+                  const categoryMap: { [k: string]: string } = {
+                    'Budget Compatibility': 'Budget',
+                    'Lifestyle Alignment': 'Lifestyle',
+                    'Academic Similarity': 'Academics',
+                    'Preference Match': 'Preferences',
+                    'Cleanliness Sync': 'Cleanliness',
+                  };
+
+                  const topTraits: string[] = [];
+
+                  // Add shared traits first (if any)
+                  if (breakdown?.shared_traits && Array.isArray(breakdown.shared_traits)) {
+                    for (const t of breakdown.shared_traits) {
+                      const label = sharedTraitMap[t] || t;
+                      if (!topTraits.includes(label)) topTraits.push(label);
+                      if (topTraits.length >= 3) break;
+                    }
+                  }
+
+                  // Fill remaining slots with top ranked_factors categories
+                  if (topTraits.length < 3 && breakdown?.ranked_factors && Array.isArray(breakdown.ranked_factors)) {
+                    for (const f of breakdown.ranked_factors) {
+                      const label = categoryMap[f.category] || f.category;
+                      if (!topTraits.includes(label)) topTraits.push(label);
+                      if (topTraits.length >= 3) break;
+                    }
+                  }
+
+                  return { ...prof, topMatchedTraits: topTraits };
+                } catch (err) {
+                  // If breakdown fetch fails, return original profile unchanged
+                  return prof;
+                }
+              })
+            );
+
+            setProfiles(updated);
+          } catch (err) {
+            console.error('Error fetching top-matched traits:', err);
+          }
+        })();
+      }
+     } catch (error) {
+       console.error('Error loading profiles:', error);
+       toast.error('Failed to load profiles');
+     } finally {
+       setIsLoading(false);
+     }
+   };
 
   const handleSwipe = async (liked: boolean) => {
     if (isGuest) {
@@ -210,6 +276,18 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
     return yearMap[year] || year;
   };
 
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-20">
+        <div className="bg-[#141414] border border-white/10 rounded-lg p-12">
+          <div className="w-12 h-12 border-4 border-[#991B1B] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <h2 className="text-white mb-2">Loading Profiles...</h2>
+          <p className="text-gray-400">Fetching nearby Trojans — this usually takes a second.</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!currentProfile) {
     return (
       <div className="max-w-2xl mx-auto text-center py-20">
@@ -217,14 +295,8 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
           <Heart className="mx-auto text-[#991B1B] mb-4" size={64} />
           <h2 className="text-white mb-2">No More Profiles</h2>
           <p className="text-gray-400">
-            Check back later for more Trojans looking for roommates, or adjust your filters.
+            Check back later for more Trojans looking for roommates.
           </p>
-          <Button 
-            onClick={() => setCurrentIndex(0)} 
-            className="mt-6 bg-[#991B1B] hover:bg-[#7d1616]"
-          >
-            Start Over
-          </Button>
         </div>
       </div>
     );
@@ -308,7 +380,16 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
 
           {/* Profile Image */}
           <div className="relative h-96 bg-[#1a1a1a] flex items-center justify-center">
-            <User className="w-32 h-32 text-[#991B1B]/20" />
+            {/* If a profile photo URL is available use an img tag, otherwise show fallback icon */}
+            {currentProfile.photos && currentProfile.photos.length > 0 && currentProfile.photos[0] ? (
+              <ImageWithFallback
+                src={currentProfile.photos[0]}
+                alt={`${currentProfile.name} photo`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="w-32 h-32 text-[#991B1B]/20" />
+            )}
             <div className="absolute top-4 right-4">
               <Badge className="bg-[#991B1B] hover:bg-[#7d1616]">
                 {getYearDisplay(currentProfile.year)}
@@ -434,7 +515,7 @@ export function SwipingPage({ isGuest = false }: SwipingPageProps) {
       {/* Progress Indicator */}
       <div className="mt-6 text-center">
         <p className="text-gray-400">
-          {currentIndex + 1} of {profiles.length} Trojans
+          {currentIndex + 1} of {profiles.length} Trojans — seen {swipedProfileIds.size} so far
         </p>
         <div className="w-full bg-[#1a1a1a] rounded-full h-2 mt-2">
           <div 

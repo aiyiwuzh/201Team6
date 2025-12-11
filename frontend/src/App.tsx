@@ -1,4 +1,4 @@
- import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { CoverPage } from './figma_components/CoverPage';
 import { LoginPage } from './figma_components/LoginPage';
 import { SignUpPage } from './figma_components/SignUpPage';
