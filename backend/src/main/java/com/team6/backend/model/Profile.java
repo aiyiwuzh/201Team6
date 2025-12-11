@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -48,6 +49,15 @@ public class Profile {
     @JsonProperty("budget_max")
     @Column(name = "budget_max")
     private BigDecimal budgetMax;
+
+    // ------------------------------
+    // ⭐ PROFILE PHOTOS (NEW)
+    // ------------------------------
+
+    @JsonProperty("photo_url")
+    @Column(name = "photo_url", columnDefinition = "TEXT")
+    private String photoUrl;   // main profile picture
+
 
     // ------------------------------
     // Lifestyle Fields (NEW)
@@ -188,6 +198,14 @@ public class Profile {
 
     public void setBudgetMax(BigDecimal budgetMax) {
         this.budgetMax = budgetMax;
+    }
+
+    // ⭐ Photo fields
+    public String getPhotoUrl() {
+        return photoUrl;
+    }
+    public void setPhotoUrl(String photoUrl) {
+        this.photoUrl = photoUrl;
     }
 
     public Integer getCleanlinessRating() {
