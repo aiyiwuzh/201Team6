@@ -87,11 +87,6 @@ public class Profile {
     @Column(name = "drinking")
     private String drinking;             // "Never", "Rarely", "Socially", "Frequently"
 
-    // Optional profile photo URL (public URL or storage reference)
-    @JsonProperty("photo_url")
-    @Column(name = "photo_url")
-    private String photoUrl;
-
     // ------------------------------
     // Timestamps
     // ------------------------------
@@ -259,14 +254,6 @@ public class Profile {
 
     public void setDrinking(String drinking) {
         this.drinking = drinking;
-    }
-
-    public String getPhotoUrl() {
-        return photoUrl;
-    }
-
-    public void setPhotoUrl(String photoUrl) {
-        this.photoUrl = photoUrl;
     }
 
     public LocalDateTime getCreatedAt() {
