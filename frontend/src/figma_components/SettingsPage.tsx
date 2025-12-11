@@ -28,15 +28,15 @@ interface SettingsPageProps {
 export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
   const [settings, setSettings] = useState({
     notifications: {
-      newMatches: true,
-      messages: true,
-      emailDigest: false,
-      marketingEmails: false,
+      newMatches: { enabled: true, optIn: true },
+      messages: { enabled: true, optIn: true },
+      emailDigest: { enabled: false, optIn: false },
+      marketingEmails: { enabled: false, optIn: false },
     },
     privacy: {
-      showAge: true,
-      showLocation: true,
-      invisibleMode: false,
+      showAge: { enabled: true, optIn: true },
+      showLocation: { enabled: true, optIn: true },
+      invisibleMode: { enabled: false, optIn: false },
     },
     email: '',
     language: 'en',
@@ -65,15 +65,15 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
           if (savedSettings && !error) {
             setSettings({
               notifications: {
-                newMatches: savedSettings.new_matches ?? true,
-                messages: savedSettings.messages ?? true,
-                emailDigest: savedSettings.email_digest ?? false,
-                marketingEmails: savedSettings.marketing_emails ?? false,
+                newMatches: { enabled: savedSettings.new_matches ?? true, optIn: savedSettings.new_matches_opt_in ?? true },
+                messages: { enabled: savedSettings.messages ?? true, optIn: savedSettings.messages_opt_in ?? true },
+                emailDigest: { enabled: savedSettings.email_digest ?? false, optIn: savedSettings.email_digest_opt_in ?? false },
+                marketingEmails: { enabled: savedSettings.marketing_emails ?? false, optIn: savedSettings.marketing_emails_opt_in ?? false },
               },
               privacy: {
-                showAge: savedSettings.show_age ?? true,
-                showLocation: savedSettings.show_location ?? true,
-                invisibleMode: savedSettings.invisible_mode ?? false,
+                showAge: { enabled: savedSettings.show_age ?? true, optIn: savedSettings.show_age_opt_in ?? true },
+                showLocation: { enabled: savedSettings.show_location ?? true, optIn: savedSettings.show_location_opt_in ?? true },
+                invisibleMode: { enabled: savedSettings.invisible_mode ?? false, optIn: savedSettings.invisible_mode_opt_in ?? false },
               },
               email: user.email || '',
               language: savedSettings.language ?? 'en',
@@ -101,13 +101,20 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
         .from('user_settings')
         .upsert({
           user_id: userId,
-          new_matches: settings.notifications.newMatches,
-          messages: settings.notifications.messages,
-          email_digest: settings.notifications.emailDigest,
-          marketing_emails: settings.notifications.marketingEmails,
-          show_age: settings.privacy.showAge,
-          show_location: settings.privacy.showLocation,
-          invisible_mode: settings.privacy.invisibleMode,
+          new_matches: settings.notifications.newMatches.enabled,
+          new_matches_opt_in: settings.notifications.newMatches.optIn,
+          messages: settings.notifications.messages.enabled,
+          messages_opt_in: settings.notifications.messages.optIn,
+          email_digest: settings.notifications.emailDigest.enabled,
+          email_digest_opt_in: settings.notifications.emailDigest.optIn,
+          marketing_emails: settings.notifications.marketingEmails.enabled,
+          marketing_emails_opt_in: settings.notifications.marketingEmails.optIn,
+          show_age: settings.privacy.showAge.enabled,
+          show_age_opt_in: settings.privacy.showAge.optIn,
+          show_location: settings.privacy.showLocation.enabled,
+          show_location_opt_in: settings.privacy.showLocation.optIn,
+          invisible_mode: settings.privacy.invisibleMode.enabled,
+          invisible_mode_opt_in: settings.privacy.invisibleMode.optIn,
           language: settings.language,
           updated_at: new Date().toISOString(),
         }, {
@@ -179,6 +186,49 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
     );
   }
 
+  // Display label maps
+  const notificationLabels: Record<string, string> = {
+    newMatches: 'New Match Notifications',
+    messages: 'Message Notifications',
+    emailDigest: 'Email Digest',
+    marketingEmails: 'Marketing Emails',
+  };
+
+  const privacyLabels: Record<string, string> = {
+    showAge: 'Show Age on Profile',
+    showLocation: 'Show Location',
+    invisibleMode: 'Invisible Mode',
+  };
+
+  // Helper to render a single toggle row
+  const SettingRow = ({
+    title,
+    description,
+    value,
+    onToggle,
+  }: {
+    title: string;
+    description: string;
+    value: { enabled: boolean; optIn: boolean };
+    onToggle: (checked: boolean) => void;
+  }) => (
+    <div className="flex items-center justify-between py-2">
+      <div className="flex flex-col pr-4">
+        <Label className="text-gray-300">{title}</Label>
+        <p className="text-gray-500">{description}</p>
+      </div>
+      <div className="min-w-[64px] flex justify-end">
+        <Switch
+          id={`${title}-toggle`}
+          aria-label={`${title} toggle`}
+          checked={value.optIn}
+          onCheckedChange={onToggle}
+          className="data-[state=checked]:bg-[#991B1B] bg-white/10 border border-white/20"
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="max-w-3xl mx-auto pb-20 md:pb-0">
       <div className="bg-[#141414] border border-white/10 rounded-lg p-6 md:p-8">
@@ -227,69 +277,23 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-gray-300">New Match Notifications</Label>
-                <p className="text-gray-500">Get notified when you have a new match</p>
-              </div>
-              <Switch
-                checked={settings.notifications.newMatches}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    notifications: { ...settings.notifications, newMatches: checked } 
+            {Object.entries(settings.notifications).map(([key, value]) => (
+              <SettingRow
+                key={key}
+                title={notificationLabels[key] ?? key}
+                description={`Control notifications for ${notificationLabels[key] ?? key}`}
+                value={value}
+                onToggle={(checked) =>
+                  setSettings({
+                    ...settings,
+                    notifications: {
+                      ...settings.notifications,
+                      [key]: { enabled: checked, optIn: checked },
+                    },
                   })
                 }
               />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-gray-300">Message Notifications</Label>
-                <p className="text-gray-500">Get notified when you receive a message</p>
-              </div>
-              <Switch
-                checked={settings.notifications.messages}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    notifications: { ...settings.notifications, messages: checked } 
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-gray-300">Email Digest</Label>
-                <p className="text-gray-500">Receive weekly summary of your activity</p>
-              </div>
-              <Switch
-                checked={settings.notifications.emailDigest}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    notifications: { ...settings.notifications, emailDigest: checked } 
-                  })
-                }
-              />
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-gray-300">Marketing Emails</Label>
-                <p className="text-gray-500">Receive tips and updates from TopTrait</p>
-              </div>
-              <Switch
-                checked={settings.notifications.marketingEmails}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    notifications: { ...settings.notifications, marketingEmails: checked } 
-                  })
-                }
-              />
-            </div>
+            ))}
           </div>
         </section>
 
@@ -303,53 +307,50 @@ export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-gray-300">Show Age on Profile</Label>
-                <p className="text-gray-500">Display your age to potential matches</p>
-              </div>
-              <Switch
-                checked={settings.privacy.showAge}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    privacy: { ...settings.privacy, showAge: checked } 
-                  })
-                }
-              />
-            </div>
+            <SettingRow
+              title={privacyLabels.showAge}
+              description="Display your age to potential matches"
+              value={settings.privacy.showAge}
+              onToggle={(checked) =>
+                setSettings({
+                  ...settings,
+                  privacy: {
+                    ...settings.privacy,
+                    showAge: { enabled: checked, optIn: checked },
+                  },
+                })
+              }
+            />
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-gray-300">Show Location</Label>
-                <p className="text-gray-500">Display your location to potential matches</p>
-              </div>
-              <Switch
-                checked={settings.privacy.showLocation}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    privacy: { ...settings.privacy, showLocation: checked } 
-                  })
-                }
-              />
-            </div>
+            <SettingRow
+              title={privacyLabels.showLocation}
+              description="Display your location to potential matches"
+              value={settings.privacy.showLocation}
+              onToggle={(checked) =>
+                setSettings({
+                  ...settings,
+                  privacy: {
+                    ...settings.privacy,
+                    showLocation: { enabled: checked, optIn: checked },
+                  },
+                })
+              }
+            />
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label className="text-gray-300">Invisible Mode</Label>
-                <p className="text-gray-500">Hide your profile from the discovery page</p>
-              </div>
-              <Switch
-                checked={settings.privacy.invisibleMode}
-                onCheckedChange={(checked) => 
-                  setSettings({ 
-                    ...settings, 
-                    privacy: { ...settings.privacy, invisibleMode: checked } 
-                  })
-                }
-              />
-            </div>
+            <SettingRow
+              title={privacyLabels.invisibleMode}
+              description="Hide your profile from the discovery page"
+              value={settings.privacy.invisibleMode}
+              onToggle={(checked) =>
+                setSettings({
+                  ...settings,
+                  privacy: {
+                    ...settings.privacy,
+                    invisibleMode: { enabled: checked, optIn: checked },
+                  },
+                })
+              }
+            />
           </div>
         </section>
 
