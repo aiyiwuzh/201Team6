@@ -22,6 +22,11 @@ export function ProfilePage() {
     budget_min: null,
     budget_max: null,
     cleanliness_rating: 5,
+    social_level: 5,           // INT slider (was noise_tolerance)
+    study_habits: 'balanced',  // TEXT dropdown (was numeric)
+    sleep_schedule: 'balanced',// TEXT dropdown
+    guests: 'sometimes',       // TEXT dropdown (was guests_frequency)
+    drinking: 'no',            // TEXT dropdown (replace smoking/pets)
   });
   
   const [isLoading, setIsLoading] = useState(true);
@@ -59,6 +64,10 @@ export function ProfilePage() {
       console.log('Loaded profile:', existingProfile);
 
       if (existingProfile) {
+          const validStudyHabits = ["light", "balanced", "intense"] as const;
+          const validSleepSchedule = ["early", "late", "balanced", ""] as const;
+          const validGuests = ["never", "rarely", "sometimes", "often", ""] as const;
+          const validDrinking = ["no", "yes", ""] as const;
           setProfile({
           full_name: existingProfile.full_name || '',
           age: existingProfile.age,
@@ -69,6 +78,11 @@ export function ProfilePage() {
           budget_min: existingProfile.budget_min,
           budget_max: existingProfile.budget_max,
           cleanliness_rating: existingProfile.cleanliness_rating || 5,
+          social_level: existingProfile.social_level ?? 5,
+          study_habits: validStudyHabits.includes(existingProfile.study_habits as any) ? (existingProfile.study_habits as typeof validStudyHabits[number]) : 'balanced',
+          sleep_schedule: validSleepSchedule.includes(existingProfile.sleep_schedule as any) ? (existingProfile.sleep_schedule as typeof validSleepSchedule[number]) : 'balanced',
+          guests: validGuests.includes(existingProfile.guests as any) ? (existingProfile.guests as typeof validGuests[number]) : 'sometimes',
+          drinking: validDrinking.includes(existingProfile.drinking as any) ? (existingProfile.drinking as typeof validDrinking[number]) : 'no',
         });
       } else {
         console.log('No existing profile found - will create on save');
@@ -92,6 +106,12 @@ export function ProfilePage() {
 
     if (profile.cleanliness_rating && (profile.cleanliness_rating < 1 || profile.cleanliness_rating > 10)) {
       toast.error('Cleanliness rating must be between 1 and 10');
+      return;
+    }
+
+    // NEW: Validate social level to match backend (1-10)
+    if (profile.social_level && (profile.social_level < 1 || profile.social_level > 10)) {
+      toast.error('Social level must be between 1 and 10');
       return;
     }
 
@@ -123,8 +143,14 @@ export function ProfilePage() {
         bio: profile.bio || '',
         budget_min: profile.budget_min,
         budget_max: profile.budget_max,
-        cleanliness_rating: profile.cleanliness_rating,
-        photo_url: profile.photo_url || null,
+		cleanliness_rating: typeof profile.cleanliness_rating === 'number' ? profile.cleanliness_rating : 5,
+		social_level: typeof profile.social_level === 'number' ? profile.social_level : 5,
+		study_habits: profile.study_habits,
+		sleep_schedule: profile.sleep_schedule,
+		guests: profile.guests,
+		drinking: profile.drinking,
+		photo_url: profile.photo_url || null,
+
       };
 
       console.log('Profile data to save:', profileData);
@@ -172,6 +198,27 @@ export function ProfilePage() {
       return updated;
     });
   };
+
+  const GUESTS_OPTIONS = [
+    { value: 'never', label: 'Never' },
+    { value: 'rarely', label: 'Rarely' },
+    { value: 'sometimes', label: 'Sometimes' },
+    { value: 'often', label: 'Often' },
+  ];
+  const SLEEP_OPTIONS = [
+    { value: 'early', label: 'Early Sleeper' },
+    { value: 'late', label: 'Night Owl' },
+    { value: 'balanced', label: 'Balanced' },
+  ];
+  const STUDY_OPTIONS = [
+    { value: 'light', label: 'Light' },
+    { value: 'balanced', label: 'Balanced' },
+    { value: 'intense', label: 'Intense' },
+  ];
+  const YES_NO_OPTIONS = [
+    { value: 'no', label: 'No' },
+    { value: 'yes', label: 'Yes' },
+  ];
 
   if (isLoading) {
     return (
@@ -273,7 +320,7 @@ export function ProfilePage() {
                 value={profile.year || ''}
                 onValueChange={(value) => updateField('year', value as Profile['year'])}
               >
-                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200">
+                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white data-[placeholder]:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200">
                   <SelectValue placeholder="Select year" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a1a1a] border-white/10 shadow-xl">
@@ -304,7 +351,7 @@ export function ProfilePage() {
                 value={profile.school || ''}
                 onValueChange={(value) => updateField('school', value)}
               >
-                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200">
+                <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white data-[placeholder]:text-gray-500 focus:border-[#991B1B] focus:ring-2 focus:ring-[#991B1B]/20 transition-all duration-200">
                   <SelectValue placeholder="Select your school" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1a1a1a] border-white/10 max-h-[300px] shadow-xl">
@@ -414,7 +461,8 @@ export function ProfilePage() {
             <h3 className="text-white font-semibold text-lg">Lifestyle</h3>
           </div>
 
-            <div>
+          {/* Cleanliness (existing) */}
+          <div>
             <div className="flex justify-between items-start mb-4">
               <div className="flex-1">
                 <Label className="text-gray-300 block mb-1 font-medium">
@@ -456,8 +504,130 @@ export function ProfilePage() {
               <div className="flex flex-col items-end">
                 <span className="font-medium">10</span>
                 <span className="text-[10px] text-gray-500">Spotless</span>
-          </div>
+              </div>
             </div>
+          </div>
+
+          {/* Social Level (slider) */}
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex-1">
+                <Label className="text-gray-300 block mb-1 font-medium">
+                  Social Level
+                </Label>
+                <p className="text-gray-400 text-sm">
+                  How social do you prefer your living environment to be?
+                </p>
+              </div>
+              <div className="flex flex-col items-center bg-gradient-to-br from-[#991B1B] to-[#7d1616] rounded-xl p-4 min-w-[80px] shadow-lg shadow-[#991B1B]/30">
+                <div className="text-white font-bold text-3xl">
+                  {profile.social_level ?? 5}
+                </div>
+                <div className="text-white/70 text-xs mt-1">/ 10</div>
+              </div>
+            </div>
+            <Slider
+              value={[Number(profile.social_level ?? 5)]}
+              onValueChange={(value: number[]) => setProfile(prev => ({ ...prev, social_level: value[0] }))}
+              min={1}
+              max={10}
+              step={1}
+              className="py-2 [&_[role=slider]]:bg-gradient-to-br [&_[role=slider]]:from-[#991B1B] [&_[role=slider]]:to-[#7d1616] [&_[role=slider]]:border-[#991B1B] [&_[role=slider]]:shadow-lg [&_[role=slider]]:shadow-[#991B1B]/50 [&_[role=slider]]:w-5 [&_[role=slider]]:h-5 [&_[role=slider]]:transition-all [&_[role=slider]]:duration-200 hover:[&_[role=slider]]:scale-110 [&_.relative]:bg-white/10 [&_.relative]:h-2 [&_.relative]:rounded-full"
+            />
+            <div className="flex justify-between text-xs text-gray-400 mt-3 px-1">
+              <div className="flex flex-col items-start">
+                <span className="font-medium">1</span>
+                <span className="text-[10px] text-gray-500">Not social</span>
+              </div>
+              <div className="flex flex-col items-center">
+                <span className="font-medium">5</span>
+                <span className="text-[10px] text-gray-500">Medium social</span>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="font-medium">10</span>
+                <span className="text-[10px] text-gray-500">Super social</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Study Habits (dropdown TEXT) */}
+          <div>
+            <Label className="text-gray-300 mb-2 block font-medium">Study Habits</Label>
+            <Select
+              value={(profile.study_habits as string) || 'balanced'}
+              onValueChange={(value) => setProfile(prev => ({ ...prev, study_habits: value as "" | "light" | "balanced" | "intense" | null }))}
+            >
+              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
+                <SelectValue placeholder="Select how intensely you study at home" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1a] border-white/10">
+                {STUDY_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-white">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Sleep Schedule (dropdown TEXT) */}
+          <div>
+            <Label className="text-gray-300 mb-2 block font-medium">Sleep Schedule</Label>
+            <Select
+              value={(profile.sleep_schedule as string) || 'balanced'}
+              onValueChange={(value) => setProfile(prev => ({ ...prev, sleep_schedule: value as "" | "balanced" | "early" | "late" | null }))}
+            >
+              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
+                <SelectValue placeholder="Select your sleep schedule" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1a] border-white/10">
+                {SLEEP_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-white">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Guests (dropdown TEXT) */}
+          <div>
+            <Label className="text-gray-300 mb-2 block font-medium">Guests Frequency</Label>
+            <Select
+              value={(profile.guests as string) || 'sometimes'}
+              onValueChange={(value) => setProfile(prev => ({ ...prev, guests: value as "" | "never" | "rarely" | "sometimes" | "often" | null }))}
+            >
+              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
+                <SelectValue placeholder="How often do you host guests?" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1a] border-white/10">
+                {GUESTS_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-white">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Drinking (dropdown TEXT) */}
+          <div>
+            <Label className="text-gray-300 mb-2 block font-medium">Drinking</Label>
+            <Select
+              value={(profile.drinking as string) || 'no'}
+              onValueChange={(value) => setProfile(prev => ({ ...prev, drinking: value as "" | "no" | "yes" | null }))}
+            >
+              <SelectTrigger className="bg-[#1a1a1a] border-white/10 text-white">
+                <SelectValue placeholder="Do you drink alcohol?" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1a] border-white/10">
+                {YES_NO_OPTIONS.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-white">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>

@@ -76,6 +76,12 @@ export interface ProfileAPI {
   budget_min?: number | null;
   budget_max?: number | null;
   cleanliness_rating?: number | null;
+  // Added lifestyle fields to match frontend
+  social_level?: number | null;
+  study_habits?: string | null;   // "", "light", "balanced", "intense", null
+  sleep_schedule?: string | null; // "", "balanced", "early", "late", null
+  guests?: string | null;         // "", "never", "rarely", "sometimes", "often", null
+  drinking?: string | null;       // "", "no", "yes", null
   created_at?: string;
   updated_at?: string;
 }
