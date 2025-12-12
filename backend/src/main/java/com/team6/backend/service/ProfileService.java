@@ -106,24 +106,24 @@ public class ProfileService {
                 profileData.getDrinking()
         );
 
-        if (profileData.getCleanlinessRating() != null) {
-            existingProfile.setCleanlinessRating(profileData.getCleanlinessRating());
-        }
+        existingProfile.setCleanlinessRating(profileData.getCleanlinessRating());
+
         if (profileData.getSocialLevel() != null) {
             existingProfile.setSocialLevel(profileData.getSocialLevel());
         }
-        if (profileData.getStudyHabits() != null) {
+        if (profileData.getStudyHabits() != null && !profileData.getStudyHabits().isBlank()) {
             existingProfile.setStudyHabits(profileData.getStudyHabits());
         }
-        if (profileData.getSleepSchedule() != null) {
+        if (profileData.getSleepSchedule() != null && !profileData.getSleepSchedule().isBlank()) {
             existingProfile.setSleepSchedule(profileData.getSleepSchedule());
         }
-        if (profileData.getGuests() != null) {
+        if (profileData.getGuests() != null && !profileData.getGuests().isBlank()) {
             existingProfile.setGuests(profileData.getGuests());
         }
-        if (profileData.getDrinking() != null) {
+        if (profileData.getDrinking() != null && !profileData.getDrinking().isBlank()) {
             existingProfile.setDrinking(profileData.getDrinking());
         }
+
 
         existingProfile.setUpdatedAt(LocalDateTime.now());
         return profileRepository.save(existingProfile);

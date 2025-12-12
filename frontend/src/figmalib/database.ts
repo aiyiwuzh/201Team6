@@ -15,9 +15,15 @@ export async function createProfile(userId: string, profileData: Partial<Profile
       school: profileData.school || '',
       year: profileData.year || '',
       bio: profileData.bio || '',
-      budget_min: profileData.budget_min || null,
-      budget_max: profileData.budget_max || null,
-      cleanliness_rating: profileData.cleanliness_rating || null,
+	  budget_min: profileData.budget_min ?? null,
+	  budget_max: profileData.budget_max ?? null,
+
+	       cleanliness_rating: profileData.cleanliness_rating ?? null,
+	       social_level: profileData.social_level ?? null,
+	       study_habits: profileData.study_habits ?? null,
+	       sleep_schedule: profileData.sleep_schedule ?? null,
+	       guests: profileData.guests ?? null,
+	       drinking: profileData.drinking ?? null,
     });
     return profile;
   } catch (error: any) {
@@ -53,6 +59,11 @@ export async function updateProfile(userId: string, profileData: Partial<Profile
       budget_min: profileData.budget_min,
       budget_max: profileData.budget_max,
       cleanliness_rating: profileData.cleanliness_rating,
+	  social_level: profileData.social_level,
+	  study_habits: profileData.study_habits,
+	  sleep_schedule: profileData.sleep_schedule,
+	  guests: profileData.guests,
+	  drinking: profileData.drinking,
     });
     return profile;
   } catch (error: any) {
