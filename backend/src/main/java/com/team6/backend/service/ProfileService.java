@@ -27,7 +27,6 @@ public class ProfileService {
             throw new IllegalArgumentException("User ID cannot be null");
         }
 
-        // Check if profile already exists for this user
         Optional<Profile> existing = profileRepository.findByUserId(profile.getUserId());
         if (existing.isPresent()) {
             throw new IllegalArgumentException("Profile already exists for user ID: " + profile.getUserId());
@@ -63,11 +62,7 @@ public class ProfileService {
         Profile existingProfile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new RuntimeException("Profile not found for user ID: " + userId));
 
-        // -------------- BASIC INFO --------------
-        // Do NOT update email on existing profiles (frontend only sets email on creation)
-        // if (profileData.getEmail() != null) {
-        //     existingProfile.setEmail(profileData.getEmail());
-        // }
+        // ---------- BASIC INFO ----------
         if (profileData.getFullName() != null) {
             existingProfile.setFullName(profileData.getFullName());
         }
@@ -87,15 +82,21 @@ public class ProfileService {
             existingProfile.setBio(profileData.getBio());
         }
 
-        // -------------- HOUSING (validate and set) --------------
+        // ---------- PHOTO ----------
+        if (profileData.getPhotoUrl() != null) {
+            existingProfile.setPhotoUrl(profileData.getPhotoUrl());
+        }
+
+        // ---------- HOUSING ----------
         validateBudget(
                 profileData.getBudgetMin() != null ? profileData.getBudgetMin().doubleValue() : null,
                 profileData.getBudgetMax() != null ? profileData.getBudgetMax().doubleValue() : null
         );
+
         existingProfile.setBudgetMin(profileData.getBudgetMin());
         existingProfile.setBudgetMax(profileData.getBudgetMax());
 
-        // -------------- LIFESTYLE (validate and set) --------------
+        // ---------- LIFESTYLE ----------
         validateLifestyle(
                 profileData.getCleanlinessRating(),
                 profileData.getSocialLevel(),
@@ -105,8 +106,9 @@ public class ProfileService {
                 profileData.getDrinking()
         );
 
-        existingProfile.setCleanlinessRating(profileData.getCleanlinessRating());
-
+        if (profileData.getCleanlinessRating() != null) {
+            existingProfile.setCleanlinessRating(profileData.getCleanlinessRating());
+        }
         if (profileData.getSocialLevel() != null) {
             existingProfile.setSocialLevel(profileData.getSocialLevel());
         }
@@ -123,9 +125,7 @@ public class ProfileService {
             existingProfile.setDrinking(profileData.getDrinking());
         }
 
-        // Timestamp update
         existingProfile.setUpdatedAt(LocalDateTime.now());
-
         return profileRepository.save(existingProfile);
     }
 
@@ -151,7 +151,8 @@ public class ProfileService {
         profileRepository.delete(profile);
     }
 
-    // -------------- VALIDATION HELPERS --------------
+    // ---------- VALIDATION HELPERS ----------
+
     private void validateBudget(Double min, Double max) {
         if (min != null && min < 0) {
             throw new IllegalArgumentException("Minimum budget cannot be negative");
@@ -160,7 +161,7 @@ public class ProfileService {
             throw new IllegalArgumentException("Maximum budget cannot be negative");
         }
         if (min != null && max != null && max < min) {
-            throw new IllegalArgumentException("Maximum budget must be greater than or equal to minimum budget");
+            throw new IllegalArgumentException("Maximum budget must be >= minimum budget");
         }
     }
 
@@ -174,7 +175,6 @@ public class ProfileService {
             throw new IllegalArgumentException("Social level must be between 1 and 10");
         }
 
-        // Allowed values must mirror frontend dropdowns
         if (studyHabits != null && !isOneOf(studyHabits, "light", "balanced", "intense")) {
             throw new IllegalArgumentException("Invalid study habits value");
         }

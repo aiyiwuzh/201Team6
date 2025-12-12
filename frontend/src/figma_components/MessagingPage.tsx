@@ -8,14 +8,24 @@ import { supabase } from '../figmalib/supabase';
 import { getMessages, sendMessage, subscribeToMessages } from '../figmalib/database';
 import type { Message } from '../figmalib/supabase';
 
+
 interface MessagingPageProps {
   matchId: string | null;
   onBack: () => void;
   isGuest?: boolean;
 }
 
+// Define lightweight Message type for UI usage
+type MessageType = {
+  id: string;
+  match_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+};
+
 export function MessagingPage({ matchId, onBack, isGuest = false }: MessagingPageProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<MessageType[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [match, setMatch] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState<string>('');

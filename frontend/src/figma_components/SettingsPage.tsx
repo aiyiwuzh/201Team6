@@ -25,7 +25,7 @@ interface SettingsPageProps {
   onDeleteAccount?: () => void;
 }
 
-export function SettingsPage({ onLogout, onDeleteAccount }: SettingsPageProps) {
+export function SettingsPage({ onLogout, onDeleteAccount: _onDeleteAccount }: SettingsPageProps) {
   const [settings, setSettings] = useState({
     notifications: {
       newMatches: { enabled: true, optIn: true },

@@ -31,7 +31,7 @@ export function ProfilePage() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [_userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     loadProfile();
@@ -143,12 +143,14 @@ export function ProfilePage() {
         bio: profile.bio || '',
         budget_min: profile.budget_min,
         budget_max: profile.budget_max,
-        cleanliness_rating: typeof profile.cleanliness_rating === 'number' ? profile.cleanliness_rating : 5,
-        social_level: typeof profile.social_level === 'number' ? profile.social_level : 5,
-        study_habits: profile.study_habits,
-        sleep_schedule: profile.sleep_schedule,
-        guests: profile.guests,
-        drinking: profile.drinking,
+		cleanliness_rating: typeof profile.cleanliness_rating === 'number' ? profile.cleanliness_rating : 5,
+		social_level: typeof profile.social_level === 'number' ? profile.social_level : 5,
+		study_habits: profile.study_habits,
+		sleep_schedule: profile.sleep_schedule,
+		guests: profile.guests,
+		drinking: profile.drinking,
+		photo_url: profile.photo_url || null,
+
       };
 
       console.log('Profile data to save:', profileData);
@@ -282,9 +284,9 @@ export function ProfilePage() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="md:col-span-2">
-              <Label htmlFor="full_name" className="text-gray-300 mb-2 block font-medium">
-                Full Name <span className="text-[#991B1B]">*</span>
-              </Label>
+			<Label htmlFor="full_name" className="text-gray-300 mb-2 block font-medium">
+				Full Name <span className="text-[#991B1B]">*</span>
+			</Label>
               <Input
                 id="full_name"
                 value={profile.full_name || ''}
